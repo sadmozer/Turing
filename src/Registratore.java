@@ -1,36 +1,66 @@
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class Registratore extends UnicastRemoteObject implements IRegistratore {
     private ConcurrentHashMap<String, Utente> utentiRegistrati;
+
     public Registratore() throws RemoteException {
         utentiRegistrati = new ConcurrentHashMap<>();
     }
 
     @Override
-    public boolean register(String username, String password) {
+    public Operazione registra(String username, String password) {
+        // Controllo argomenti
         if (username == null) {
-            return false;
+            return Operazione.UsernameMancante;
         }
         if (password == null) {
-            return false;
+            return Operazione.PasswordMancante;
         }
+
+        // Registro il nuovo utente, se non lo è gia'
+        Utente res;
         try {
-            utentiRegistrati.putIfAbsent(username, new Utente(username, password));
+            res = utentiRegistrati.putIfAbsent(username, new Utente(username, password));
         } catch (Exception e) {
             e.printStackTrace();
+            return Operazione.ErroreGenerico;
         }
-        return true;
+        if (res != null) {
+            return Operazione.GiaRegistrato;
+        } else {
+            return Operazione.Successo;
+        }
     }
 
-    public String getUtentiRegistrati() {
-        String stringUtentiRegistrati = "";
-        for (Map.Entry<String, Utente> entry: utentiRegistrati.entrySet()) {
-            stringUtentiRegistrati = stringUtentiRegistrati + entry.toString();
+    @Override
+    public Operazione isRegistrato(String username) {
+        // Controllo argomenti
+        if(username == null) {
+            return Operazione.UsernameMancante;
         }
-        return stringUtentiRegistrati;
+
+        // Controllo se l'utente è registrato
+        boolean res;
+        try {
+            res = utentiRegistrati.containsKey(username);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Operazione.ErroreGenerico;
+        }
+        if (res) {
+            return Operazione.True;
+        }
+        else {
+            return Operazione.False;
+        }
     }
+//    public String getUtentiRegistrati() {
+//        String stringUtentiRegistrati = "";
+//        for (Map.Entry<String, Utente> entry: utentiRegistrati.entrySet()) {
+//            stringUtentiRegistrati = stringUtentiRegistrati + entry.toString();
+//        }
+//        return stringUtentiRegistrati;
+//    }
 }

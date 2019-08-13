@@ -1,23 +1,23 @@
-import java.rmi.Remote;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.rmi.server.RemoteObject;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class Client {
+    private static int portRegistro = 6000;
     public static void main (String[] args) {
-        System.out.println("Sono il client!");
+        System.out.println("[CLIENT]: Avvio..");
         IRegistratore registratoreRemoto;
-        Remote remoteObj;
-        Map<String, Utente> utentiRegistrati;
+        Operazione esitoRegistra;
         try {
-            Registry reg = LocateRegistry.getRegistry(6000);
-            registratoreRemoto = (IRegistratore) reg.lookup("REGISTRATION-SERVER");
-            registratoreRemoto.register("Pippo", "topolinatiamo");
-
-        } catch (Exception e) {
+            Registry reg = LocateRegistry.getRegistry(portRegistro);
+            registratoreRemoto = (IRegistratore) reg.lookup("Registratore");
+            esitoRegistra = registratoreRemoto.registra("Pippo", "topolinatiamo");
+        } catch (RemoteException | NotBoundException e) {
             e.printStackTrace();
+            System.exit(1);
         }
+
+
     }
 }
