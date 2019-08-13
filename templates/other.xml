@@ -1,0 +1,13 @@
+<templateSet group="other">
+  <template name="main" value="public static void main(String[] args) {&#10;  $END$&#10;}" description="main() method declaration" toReformat="true" toShortenFQNames="true">
+    <context>
+      <option name="JAVA_CODE" value="true" />
+    </context>
+  </template>
+  <template name="try" value="try {&#10;    $END$&#10;} catch ($EXCEPTION$ e) {&#10;    e.printStackTrace();&#10;}" description="Inserts try-catch statement" toReformat="false" toShortenFQNames="true">
+    <variable name="EXCEPTION" expression="" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="JAVA_CODE" value="true" />
+    </context>
+  </template>
+</templateSet>
