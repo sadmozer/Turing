@@ -1,8 +1,8 @@
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class Registratore extends UnicastRemoteObject implements IRegistratore {
     private ConcurrentHashMap<String, Utente> utentiRegistrati;
@@ -26,7 +26,11 @@ public class Registratore extends UnicastRemoteObject implements IRegistratore {
         return true;
     }
 
-    public Map<String, Utente> getUtentiRegistrati() {
-        return Collections.unmodifiableMap(utentiRegistrati);
+    public String getUtentiRegistrati() {
+        String stringUtentiRegistrati = "";
+        for (Map.Entry<String, Utente> entry: utentiRegistrati.entrySet()) {
+            stringUtentiRegistrati = stringUtentiRegistrati + entry.toString();
+        }
+        return stringUtentiRegistrati;
     }
 }

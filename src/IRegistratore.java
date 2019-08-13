@@ -5,5 +5,5 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public interface IRegistratore extends Remote {
     boolean register(String username, String password) throws RemoteException;
-    Map<String, Utente> getUtentiRegistrati() throws RemoteException;
+    String getUtentiRegistrati() throws RemoteException;
 }

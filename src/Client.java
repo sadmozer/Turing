@@ -15,10 +15,7 @@ public class Client {
             Registry reg = LocateRegistry.getRegistry(6000);
             registratoreRemoto = (IRegistratore) reg.lookup("REGISTRATION-SERVER");
             registratoreRemoto.register("Pippo", "topolinatiamo");
-//            utentiRegistrati = registratoreRemoto.getUtentiRegistrati();
-//            for (Map.Entry<String, Utente> entry: utentiRegistrati.entrySet()) {
-//                System.out.println(entry.toString());
-//            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
