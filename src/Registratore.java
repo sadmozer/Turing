@@ -11,7 +11,7 @@ public class Registratore extends UnicastRemoteObject implements IRegistratore {
 
     @Override
     public Operazione registra(String username, String password) {
-        /* Controllo argomenti */
+        // Controllo argomenti
         if (username == null) {
             return Operazione.UsernameMancante;
         }
@@ -19,7 +19,7 @@ public class Registratore extends UnicastRemoteObject implements IRegistratore {
             return Operazione.PasswordMancante;
         }
 
-        /* Registro il nuovo utente, se non lo è gia' */
+        // Registro il nuovo utente, se non lo è gia'
         Utente res;
         try {
             res = utentiRegistrati.putIfAbsent(username, new Utente(username, password));
@@ -36,12 +36,12 @@ public class Registratore extends UnicastRemoteObject implements IRegistratore {
 
     @Override
     public Operazione isRegistrato(String username) {
-        /* Controllo argomenti */
+        // Controllo argomenti
         if(username == null) {
             return Operazione.UsernameMancante;
         }
 
-        /* Controllo se l'utente è registrato */
+        // Controllo se l'utente è registrato
         boolean res;
         try {
             res = utentiRegistrati.containsKey(username);

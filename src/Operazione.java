@@ -4,6 +4,7 @@ public enum Operazione {
     PasswordMancante,
     GiaRegistrato,
     Successo,
+    Fail,
 
     // Altre operazioni
     ErroreGenerico,
