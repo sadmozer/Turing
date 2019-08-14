@@ -1,4 +1,8 @@
 # Default ignored files
-/workspace.xml
 /.idea
 /out
+/_linux
+/codestyles
+/templates
+*.xml
+.attach_pid*
