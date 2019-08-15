@@ -57,6 +57,8 @@ public class Server {
         return serverSelector;
     }
 
+
+
     public static void main(String[] args) {
         // Eseguo il setup del servizio Registratore
         Registratore registratore = setupRegistratore(DEFAULT_REGISTRY_PORT, DEFAULT_REGISTRY_NAME);
@@ -97,24 +99,31 @@ public class Server {
                 numCanaliPronti = serverSelector.select(SELECTOR_TIMEOUT);
             } catch (IOException e) {
                 e.printStackTrace();
+                System.err.println("[SERVER]: Errore select. Esco..");
                 System.exit(1);
             }
 
-            if (numCanaliPronti != 0) {
+            if (numCanaliPronti == 0){
+                // Nessun canale pronto
+                System.out.println("[SERVER]: Canali Registrati:");
+                System.out.printf("[SERVER]: %s\n", serverSelector.keys().toArray());
+                System.out.println("[SERVER]: Nessun canale pronto..");
+            }
+            else {
                 // Almeno un canale è pronto
                 Set<SelectionKey> selectedKeys = serverSelector.selectedKeys();
                 Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
                 while (keyIterator.hasNext()) {
                     SelectionKey key = (SelectionKey) keyIterator.next();
                     keyIterator.remove();
-                    if (key.isAcceptable() && key.isValid()) {
+                    if (key.isValid() && key.isAcceptable()) {
                         ServerSocketChannel server = (ServerSocketChannel) key.channel();
                         SocketChannel client = null;
                         SocketAddress clientAddress = null;
                         try {
                             client = server.accept();
                             client.configureBlocking(false);
-                            client.register(serverSelector, SelectionKey.OP_READ);
+                            client.register(serverSelector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
                             clientAddress = client.getRemoteAddress();
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -123,31 +132,21 @@ public class Server {
                         }
                         System.out.printf("[SERVER]: Connesso con il client %s\n", clientAddress);
                     }
-                    else if (key.isValid() && key.isWritable()) {
-//                        String messaggioBenvenuto = "Sei connesso con Turing!";
-//                        ByteBuffer dimMessaggioBenvenuto = ByteBuffer.allocate(Integer.BYTES);
-//                        dimMessaggioBenvenuto.putInt(messaggioBenvenuto.length());
-//                        dimMessaggioBenvenuto.flip();
-//
-//                        try {
-//                            System.out.println(client.write(dimMessaggioBenvenuto));
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                            System.exit(1);
-//                        }
-
-                    }
                     else if (key.isValid() && key.isReadable()) {
-
+                        SocketChannel client = (SocketChannel) key.channel();
+                        System.out.println("[SERVER]: Evento scrittura!");
+                        ByteBuffer msg = null;
+                        if((msg = Connessione.riceviDati(client)) == null) {
+                            System.err.println("[SERVER]: Errore riceviDati. Esco..");
+                            System.exit(1);
+                        }
+                        System.out.printf("[SERVER]: Messaggio ricevuto: %s\n", new String(msg.array()));
+                        System.exit(0);
+                    }
+                    else if (key.isValid() && key.isWritable()) {
+                        System.out.println("[SERVER]: Evento lettura!");
                     }
                 }
-
-            }
-            else {
-                // Nessun canale pronto
-                System.out.println("[SERVER]: Canali Registrati:");
-                System.out.printf("[SERVER]: %s\n", serverSelector.keys().size());
-                System.out.println("[SERVER]: Nessun canale pronto..");
             }
         }
     }

@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnresolvedAddressException;
 import java.rmi.NotBoundException;
@@ -46,34 +47,47 @@ public class Client {
             System.err.println("[CLIENT-ERROR]: HostAddress non trovato. Esco..");
             System.exit(1);
         }
-        SocketChannel client = null;
+        SocketChannel socket = null;
         InetSocketAddress serverSocketAddress = new InetSocketAddress(hostAddress, DEFAULT_CLIENT_PORT);
         try {
-            client = SocketChannel.open();
-            client.configureBlocking(false);
-            client.connect(serverSocketAddress);
-            while (!client.finishConnect()) {
+            socket = SocketChannel.open();
+            socket.configureBlocking(false);
+            socket.connect(serverSocketAddress);
+            while (!socket.finishConnect()) {
                 System.out.println("[CLIENT]: Mi sto connettendo..");
             }
         } catch (UnresolvedAddressException | IOException e) {
             e.printStackTrace();
             System.exit(1);
         }
-        if (client.isConnected()) {
+        if (socket.isConnected()) {
             System.out.printf("[CLIENT]: Connesso a %s sulla porta %d\n", hostAddress, DEFAULT_CLIENT_PORT);
         }
         else {
             System.out.println("[CLIENT]: Connessione fallita!");
         }
-        String msg = "Ciao da Client!";
-        ByteBuffer saluto = ByteBuffer.allocate(Character.BYTES * msg.length());
-
-        try {
-            System.out.println(client.write(saluto));
-        } catch (IOException e) {
-            e.printStackTrace();
+        String msg = "Ciao come va?";
+        ByteBuffer byteMsg = ByteBuffer.wrap(msg.getBytes());
+        if(Connessione.inviaDati(socket, byteMsg, byteMsg.capacity()) == -1) {
+            System.err.println("[CLIENT]: Errore inviaDati. Esco..");
             System.exit(1);
         }
+//        ByteBuffer byteLength = ByteBuffer.allocate(Integer.BYTES);
+//        byteLength.putInt(length);
+//        byteLength.rewind();
+//        System.out.printf("Ecco il buffer: %d\n", byteLength.getInt());
+////        ByteBuffer buf = ByteBuffer.allocate(Character.BYTES * length);
+////        buf.asCharBuffer().put(msg);
+////        byteLength.flip();
+//        byteLength.rewind();
+//        try {
+//            System.out.println(client.write(byteLength));
+////            System.out.println(client.write(buf));
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            System.exit(1);
+//        }
+
 //        Operazione esitoRegistra;
 //        esitoRegistra = registratoreRemoto.registra("Pippo", "topolinatiamo");
 
