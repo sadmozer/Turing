@@ -92,7 +92,7 @@ public class Server {
             System.exit(1);
         }
         System.out.println("[SERVER]: Server Selector configurato.");
-
+        int count = 0;
         while (true) {
             int numCanaliPronti = 0;
             try {
@@ -105,9 +105,8 @@ public class Server {
 
             if (numCanaliPronti == 0){
                 // Nessun canale pronto
-                System.out.println("[SERVER]: Canali Registrati:");
-                System.out.printf("[SERVER]: %s\n", serverSelector.keys().toArray());
-                System.out.println("[SERVER]: Nessun canale pronto..");
+                System.out.println("[SERVER]: ("+count+") Nessun canale pronto..");
+                count++;
             }
             else {
                 // Almeno un canale è pronto
@@ -117,13 +116,14 @@ public class Server {
                     SelectionKey key = (SelectionKey) keyIterator.next();
                     keyIterator.remove();
                     if (key.isValid() && key.isAcceptable()) {
+                        // Si apre un socket per comunicare con il client che ha fatto richiesta
                         ServerSocketChannel server = (ServerSocketChannel) key.channel();
                         SocketChannel client = null;
                         SocketAddress clientAddress = null;
                         try {
                             client = server.accept();
                             client.configureBlocking(false);
-                            client.register(serverSelector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+                            client.register(serverSelector, SelectionKey.OP_READ);
                             clientAddress = client.getRemoteAddress();
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -141,7 +141,6 @@ public class Server {
                             System.exit(1);
                         }
                         System.out.printf("[SERVER]: Messaggio ricevuto: %s\n", new String(msg.array()));
-                        System.exit(0);
                     }
                     else if (key.isValid() && key.isWritable()) {
                         System.out.println("[SERVER]: Evento lettura!");

@@ -56,11 +56,4 @@ public class Registratore extends UnicastRemoteObject implements IRegistratore {
             return Operazione.False;
         }
     }
-//    public String getUtentiRegistrati() {
-//        String stringUtentiRegistrati = "";
-//        for (Map.Entry<String, Utente> entry: utentiRegistrati.entrySet()) {
-//            stringUtentiRegistrati = stringUtentiRegistrati + entry.toString();
-//        }
-//        return stringUtentiRegistrati;
-//    }
 }
