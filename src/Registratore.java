@@ -35,10 +35,10 @@ public class Registratore extends UnicastRemoteObject implements IRegistratore {
     }
 
     @Override
-    public Operazione isRegistrato(String username) {
+    public boolean isRegistrato(String username) {
         // Controllo argomenti
         if(username == null) {
-            return Operazione.UsernameMancante;
+            return false;
         }
 
         // Controllo se l'utente è registrato
@@ -47,13 +47,8 @@ public class Registratore extends UnicastRemoteObject implements IRegistratore {
             res = utentiRegistrati.containsKey(username);
         } catch (Exception e) {
             e.printStackTrace();
-            return Operazione.ErroreGenerico;
+            return false;
         }
-        if (res) {
-            return Operazione.True;
-        }
-        else {
-            return Operazione.False;
-        }
+        return res;
     }
 }

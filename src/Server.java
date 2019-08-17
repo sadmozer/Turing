@@ -17,7 +17,7 @@ public class Server {
     private static int DEFAULT_SERVER_PORT = 9999;
     private static long SELECTOR_TIMEOUT = 3000L;
 
-    public static Registratore setupRegistratore(int registryPort, String registryName) {
+    private static Registratore setupRegistratore(int registryPort, String registryName) {
         Registratore registratore = null;
         try {
             registratore = new Registratore();
@@ -31,7 +31,7 @@ public class Server {
         return registratore;
     }
 
-    public static ServerSocketChannel setupServerSocket(int serverPort) {
+    private static ServerSocketChannel setupServerSocket(int serverPort) {
         ServerSocketChannel serverSocketChannel = null;
         try {
             serverSocketChannel = ServerSocketChannel.open();
@@ -45,7 +45,7 @@ public class Server {
         return serverSocketChannel;
     }
 
-    public static Selector setupServerSelector(ServerSocketChannel serverSocketChannel) {
+    private static Selector setupServerSelector(ServerSocketChannel serverSocketChannel) {
         Selector serverSelector = null;
         try {
             serverSelector = Selector.open();
@@ -57,7 +57,16 @@ public class Server {
         return serverSelector;
     }
 
-
+    private static int trySelect(Selector selector, long timeout) {
+        int numPronti = 0;
+        try {
+            selector.select(timeout);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return -1;
+        }
+        return numPronti;
+    }
 
     public static void main(String[] args) {
         // Eseguo il setup del servizio Registratore
@@ -92,18 +101,16 @@ public class Server {
             System.exit(1);
         }
         System.out.println("[SERVER]: Server Selector configurato.");
+
+        // Mi metto in ascolto
         int count = 0;
         while (true) {
-            int numCanaliPronti = 0;
-            try {
-                numCanaliPronti = serverSelector.select(SELECTOR_TIMEOUT);
-            } catch (IOException e) {
-                e.printStackTrace();
+            int numCanaliPronti = trySelect(serverSelector, SELECTOR_TIMEOUT);
+            if (numCanaliPronti < 0) {
                 System.err.println("[SERVER]: Errore select. Esco..");
                 System.exit(1);
             }
-
-            if (numCanaliPronti == 0){
+            else if (numCanaliPronti == 0){
                 // Nessun canale pronto
                 System.out.println("[SERVER]: ("+count+") Nessun canale pronto..");
                 count++;
@@ -137,10 +144,12 @@ public class Server {
                         System.out.println("[SERVER]: Evento scrittura!");
                         ByteBuffer msg = null;
                         if((msg = Connessione.riceviDati(client)) == null) {
-                            System.err.println("[SERVER]: Errore riceviDati. Esco..");
-                            System.exit(1);
+                            System.err.println("[SERVER-ERROR]: Errore riceviDati. Chiudo la connessione.");
+                            key.cancel();
                         }
-                        System.out.printf("[SERVER]: Messaggio ricevuto: %s\n", new String(msg.array()));
+                        else {
+                            System.out.printf("[SERVER]: Messaggio ricevuto: %s\n", new String(msg.array()));
+                        }
                     }
                     else if (key.isValid() && key.isWritable()) {
                         System.out.println("[SERVER]: Evento lettura!");

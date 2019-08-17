@@ -94,6 +94,17 @@ public class Client {
         return input.matches(regex);
     }
 
+    private static boolean tryIsRegistrato(IRegistratore registratoreRemoto, String username) {
+        boolean isRegistrato = false;
+        try {
+            isRegistrato = registratoreRemoto.isRegistrato(username);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return isRegistrato;
+    }
+
     public static void main (String[] args) {
         System.out.println("[CLIENT]: Avvio..");
 
@@ -132,24 +143,44 @@ public class Client {
         System.out.println("[CLIENT]: Benvenuto su Turing CLI! Per vedere i comandi disponibili usa: turing --help");
 
         // Rimango in ascolto dei comandi utente in input
-        Scanner input = new Scanner(System.in);
+        Scanner inputUtente = new Scanner(System.in);
         String regex = costruisciRegex();
         String comandi[] = null;
         String currInput = "";
         boolean quit = false;
+        StatoClient statoClient = StatoClient.STARTED;
         while (!quit) {
             System.out.printf("$ ");
-            currInput = input.nextLine();
+            currInput = inputUtente.nextLine();
             comandi = currInput.split(" ");
             if(sintassiInputCorretta(currInput, regex)) {
                 // fai robe
                 switch (comandi[1]) {
                     case "register": {
-                        String msg = comandi[1] + " " + comandi[2] + " " + comandi[3];
-                        ByteBuffer byteMsg = ByteBuffer.wrap(msg.getBytes());
-                        if(Connessione.inviaDati(socket, byteMsg, byteMsg.capacity()) == -1) {
-                            System.err.println("[CLIENT]: Errore inviaDati. Esco..");
-                            System.exit(1);
+                        String username = comandi[2];
+                        String password = comandi[3];
+                        switch (statoClient) {
+                            case STARTED: {
+
+                            } break;
+                            case EDIT: case LOGGED: {
+                                System.err.println("Devi prima eseguire il logout!");
+                            } break;
+                        }
+                    } break;
+                    case "login": {
+                        switch (statoClient) {
+                            case STARTED: {
+                                String msg = comandi[1] + " " + comandi[2] + " " + comandi[3];
+                                ByteBuffer byteMsg = ByteBuffer.wrap(msg.getBytes());
+                                if(Connessione.inviaDati(socket, byteMsg, byteMsg.capacity()) == -1) {
+                                    System.err.println("[CLIENT]: Errore inviaDati. Esco..");
+                                    System.exit(1);
+                                }
+                            } break;
+                            case EDIT: case LOGGED: {
+                                System.err.println("[CLIENT-ERROR]: Devi prima eseguire il logout!");
+                            } break;
                         }
                     } break;
                     case "quit": {
@@ -168,6 +199,12 @@ public class Client {
             else {
                 printUsage();
             }
+        }
+        inputUtente.close();
+        try {
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

@@ -16,37 +16,25 @@ public class Connessione {
             return -1;
         }
 
-        int bytesScritti1 = 0;
-        int bytesScritti2 = 0;
+        int bytesScritti = 0;
 
-        // Prima invio la dimensione del buffer
-        ByteBuffer byteDim = ByteBuffer.allocate(Integer.BYTES);
-        byteDim.putInt(dimBuffer);
-        byteDim.flip();
+        // Invio la dimensione del buffer e il buffer insieme
+        ByteBuffer byteTot = ByteBuffer.allocate(Integer.BYTES+dimBuffer);
+        byteTot.putInt(dimBuffer);
+        byteTot.put(buffer);
+        byteTot.flip();
         try {
-            while (byteDim.hasRemaining()) {
-                bytesScritti1 = bytesScritti1 + socketChannel.write(byteDim);
+            while (byteTot.hasRemaining()) {
+                bytesScritti = bytesScritti + socketChannel.write(byteTot);
             }
         } catch (IOException e) {
             e.printStackTrace();
-            System.err.println("InviaDati: Errore prima scrittura!");
+            System.err.println("InviaDati: Errore scrittura!");
             return -1;
         }
-        System.out.printf("InviaDati: Bytes scritti = %d\n", bytesScritti1);
+        System.out.printf("InviaDati: Bytes scritti = %d\n", bytesScritti);
 
-        // Poi invio nel canale il buffer vero e proprio
-        try {
-            while (buffer.hasRemaining()) {
-                bytesScritti2 = bytesScritti2 + socketChannel.write(buffer);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.err.println("InviaDati: Errore seconda scrittura!");
-            return -1;
-        }
-        System.out.printf("InviaDati: Bytes scritti = %d\n", bytesScritti2);
-
-        return bytesScritti1 + bytesScritti2;
+        return bytesScritti;
     }
 
     public static ByteBuffer riceviDati(SocketChannel socketChannel) {
