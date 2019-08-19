@@ -17,6 +17,7 @@ public class Server {
     private static int DEFAULT_SERVER_PORT = 9999;
     private static long SELECTOR_TIMEOUT = 3000L;
 
+
     private static Registratore setupRegistratore(int registryPort, String registryName) {
         Registratore registratore = null;
         try {
@@ -60,7 +61,7 @@ public class Server {
     private static int trySelect(Selector selector, long timeout) {
         int numPronti = 0;
         try {
-            selector.select(timeout);
+            numPronti = selector.select(timeout);
         } catch (IOException e) {
             e.printStackTrace();
             return -1;
@@ -68,7 +69,14 @@ public class Server {
         return numPronti;
     }
 
+    private static void ps(StatoClient statoClient) {
+        statoClient = StatoClient.STARTED;
+    }
     public static void main(String[] args) {
+        StatoClient s = StatoClient.EDIT;
+        ps(s);
+        System.out.println(s.equals(StatoClient.EDIT));
+        System.exit(11);
         // Eseguo il setup del servizio Registratore
         Registratore registratore = setupRegistratore(DEFAULT_REGISTRY_PORT, DEFAULT_REGISTRY_NAME);
         if (registratore == null) {
@@ -112,7 +120,7 @@ public class Server {
             }
             else if (numCanaliPronti == 0){
                 // Nessun canale pronto
-                System.out.println("[SERVER]: ("+count+") Nessun canale pronto..");
+                System.out.println("[SERVER]: (" + count + ") Nessun canale pronto..");
                 count++;
             }
             else {

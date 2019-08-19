@@ -57,32 +57,32 @@ public class Client {
         return true;
     }
 
-
     private static void printUsage() {
-        System.out.printf("usage: turing COMMAND [ARGS...]%n%n");
-        System.out.printf("commands:%n");
-        System.out.printf("\t%-40s %-40s%n", "register <username> <password>", "registra l'utente");
-        System.out.printf("\t%-40s %-40s%n", "login <username> <password>","login utente");
-        System.out.printf("\t%-40s %-40s%n", "logout", "effettua il logout");
+        System.out.printf("USAGE%n");
+        System.out.printf("  $ turing COMMAND [ARGS...]%n%n");
+        System.out.printf("COMMANDS%n");
+        System.out.printf("  %-35s %-40s%n", "register <username> <password>", "registra l'utente");
+        System.out.printf("  %-35s %-40s%n", "login <username> <password>","login utente");
+        System.out.printf("  %-35s %-40s%n", "logout", "effettua il logout");
         System.out.printf("%n");
-        System.out.printf("\t%-40s %-40s%n", "create <doc> <numsezioni>", "crea un documento");
-        System.out.printf("\t%-40s %-40s%n", "share <doc> <username>", "condivide un documento");
-        System.out.printf("\t%-40s %-40s%n", "show <doc> <sec>", "mostra una sezione del documento");
-        System.out.printf("\t%-40s %-40s%n", "show <doc>", "mostra l'intero documento");
-        System.out.printf("\t%-40s %-40s%n", "list", "mostra la lista dei documenti");
+        System.out.printf("  %-35s %-40s%n", "create <doc> <numsezioni>", "crea un documento");
+        System.out.printf("  %-35s %-40s%n", "share <doc> <username>", "condivide un documento");
+        System.out.printf("  %-35s %-40s%n", "show <doc> <sec>", "mostra una sezione del documento");
+        System.out.printf("  %-35s %-40s%n", "show <doc>", "mostra l'intero documento");
+        System.out.printf("  %-35s %-40s%n", "list", "mostra la lista dei documenti");
         System.out.printf("%n");
-        System.out.printf("\t%-40s %-40s%n", "edit <doc> <sec>", "modifica una sezione del documento");
-        System.out.printf("\t%-40s %-40s%n", "end-edit <doc> <sec>", "fine modifica della sezione del doc");
+        System.out.printf("  %-35s %-40s%n", "edit <doc> <sec>", "modifica una sezione del documento");
+        System.out.printf("  %-35s %-40s%n", "end-edit <doc> <sec>", "fine modifica della sezione del doc");
         System.out.printf("%n");
-        System.out.printf("\t%-40s %-40s%n", "send <msg>", "invia messaggi sulla chat");
-        System.out.printf("\t%-40s %-40s%n", "receive", "visualizza i messaggi ricevuti sulla chat");
+        System.out.printf("  %-35s %-40s%n", "send <msg>", "invia messaggi sulla chat");
+        System.out.printf("  %-35s %-40s%n", "receive", "visualizza i messaggi ricevuti sulla chat");
         System.out.printf("%n");
     }
 
     private static String costruisciRegex() {
         String regex = "";
-        regex += "(turing\\sregister\\s\\w{"+minLungUsername+","+maxLungUsername+"}\\s\\w{"+minLungPassword+","+maxLungPassword+"}|";
-        regex += "turing\\slogin\\s\\w{"+minLungUsername+","+maxLungUsername+"}\\s\\w{"+minLungPassword+","+maxLungPassword+"}|";
+        regex += "(turing\\sregister\\s\\w+\\s\\w+|";
+        regex += "turing\\slogin\\s\\w+}\\s\\w+}|";
         regex += "turing\\slogout|";
         regex += "turing\\squit|";
         regex += "turing\\s--help)";
@@ -94,15 +94,166 @@ public class Client {
         return input.matches(regex);
     }
 
-    private static boolean tryIsRegistrato(IRegistratore registratoreRemoto, String username) {
-        boolean isRegistrato = false;
+    private static StatoClient opRegister(IRegistratore registratore, String username, String password) {
+        boolean err = false;
+
+        // Controllo argomenti
+        if (username.length() < minLungUsername) {
+            System.err.println("L'username deve contenere almeno " + minLungUsername + " caratteri!");
+            err = true;
+        }
+        else if (username.length() > maxLungUsername) {
+            System.err.println("L'username deve contenere al massimo " + maxLungUsername + " caratteri!");
+            err = true;
+        }
+        if (password.length() < minLungPassword) {
+            System.err.println("La password deve contenere almeno " + minLungPassword+ " caratteri!");
+            err = true;
+        }
+        else if (password.length() > maxLungPassword) {
+            System.err.println("La password deve contenere al massimo " + maxLungPassword + " caratteri!");
+            err = true;
+        }
+        if (err)
+            return StatoClient.STARTED;
+
+        // Provo a registrare l'utente
         try {
-            isRegistrato = registratoreRemoto.isRegistrato(username);
+            if (!registratore.isRegistrato(username)) {
+                if(registratore.registra(username, password)) {
+                    System.out.println("Registrazione eseguita con successo.");
+                    return StatoClient.STARTED;
+                }
+                else {
+                    System.err.println("Registrazione fallita. Riprova.");
+                    return StatoClient.STARTED;
+                }
+            }
+            else {
+                System.err.println("Utente gia' registrato, scegli un altro username.");
+                return StatoClient.STARTED;
+            }
         } catch (RemoteException e) {
             e.printStackTrace();
-            return false;
+            System.err.println("Registrazione fallita. Riprova.");
+            return StatoClient.STARTED;
         }
-        return isRegistrato;
+    }
+
+    private static StatoClient opLogin(SocketChannel socket, String username, String password) {
+        String msg = "login " + username + " " + password;
+        ByteBuffer byteMsg = ByteBuffer.wrap(msg.getBytes());
+        if(Connessione.inviaDati(socket, byteMsg, byteMsg.capacity()) == -1) {
+            System.err.println("[CLIENT]: Errore inviaDati.");
+            return StatoClient.STARTED;
+        }
+        else {
+            return StatoClient.LOGGED;
+        }
+    }
+
+    private static StatoClient opCreate(SocketChannel socket, String doc, int numSezioni) {
+        return StatoClient.LOGGED;
+    }
+
+    private static StatoClient opShare(SocketChannel socket, String doc, String username) {
+        return StatoClient.LOGGED;
+    }
+
+    private static StatoClient opShow(SocketChannel socket, String doc) {
+        return StatoClient.LOGGED;
+    }
+
+    private static StatoClient opList(SocketChannel socket) {
+        return StatoClient.LOGGED;
+    }
+
+    private static StatoClient opEdit(SocketChannel socket, String doc, String sec) {
+        return StatoClient.EDIT;
+    }
+
+    private static StatoClient opLogout() {
+        return StatoClient.STARTED;
+    }
+
+    private static StatoClient statoStarted(String[] comandi, SocketChannel socket, IRegistratore registratore) {
+        StatoClient statoClient = StatoClient.STARTED;
+        switch (comandi[1]) {
+            case "register": {
+                statoClient = opRegister(registratore, comandi[2], comandi[3]);
+            } break;
+            case "login": {
+                statoClient = opLogin(socket, comandi[2], comandi[3]);
+            } break;
+            case "--help": {
+                printUsage();
+            } break;
+            case "logout":
+            case "create":
+            case "share":
+            case "show":
+            case "list":
+            case "edit":
+            case "end-edit":
+            case "send":
+            case "receive": {
+                System.err.println("Devi prima eseguire il login!");
+            } break;
+            case "quit": {
+                statoClient = StatoClient.QUIT;
+            } break;
+            default: {
+                System.err.println("bhComando errato.");
+                System.out.println("Per vedere i comandi disponibili usa: turing --help");
+                statoClient = StatoClient.STARTED;
+            }
+        }
+        return statoClient;
+    }
+
+    private static StatoClient statoLogged(String[] comandi, SocketChannel socket) {
+        StatoClient statoClient = StatoClient.STARTED;
+        switch (comandi[1]) {
+            case "create": {
+                statoClient = opCreate(socket, comandi[2], Integer.parseInt(comandi[3]));
+            } break;
+            case "share": {
+                statoClient = opShare(socket, comandi[2], comandi[3]);
+            } break;
+            case "show": {
+                statoClient = opShow(socket, comandi[2]);
+            } break;
+            case "list": {
+                statoClient = opList(socket);
+            } break;
+            case "edit": {
+                statoClient = opEdit(socket, comandi[2], comandi[3]);
+            } break;
+            case "--help": {
+                printUsage();
+            } break;
+            case "logout": {
+                statoClient = opLogout();
+            } break;
+            case "register":
+            case "login": {
+                System.err.println("Devi prima eseguire il logout!");
+            }
+            case "end-edit":
+            case "send":
+            case "receive": {
+
+            } break;
+            default: {
+                System.err.println("Comando errato.");
+                System.out.println("Per vedere i comandi disponibili usa: turing --help");
+            }
+        }
+        return statoClient;
+    }
+
+    private static StatoClient statoEdit(String[] comandi, SocketChannel socket) {
+        return StatoClient.EDIT;
     }
 
     public static void main (String[] args) {
@@ -149,55 +300,26 @@ public class Client {
         String currInput = "";
         boolean quit = false;
         StatoClient statoClient = StatoClient.STARTED;
-        while (!quit) {
+        while (!(statoClient == StatoClient.QUIT)) {
             System.out.printf("$ ");
             currInput = inputUtente.nextLine();
             comandi = currInput.split(" ");
-            if(sintassiInputCorretta(currInput, regex)) {
-                // fai robe
-                switch (comandi[1]) {
-                    case "register": {
-                        String username = comandi[2];
-                        String password = comandi[3];
-                        switch (statoClient) {
-                            case STARTED: {
 
-                            } break;
-                            case EDIT: case LOGGED: {
-                                System.err.println("Devi prima eseguire il logout!");
-                            } break;
-                        }
-                    } break;
-                    case "login": {
-                        switch (statoClient) {
-                            case STARTED: {
-                                String msg = comandi[1] + " " + comandi[2] + " " + comandi[3];
-                                ByteBuffer byteMsg = ByteBuffer.wrap(msg.getBytes());
-                                if(Connessione.inviaDati(socket, byteMsg, byteMsg.capacity()) == -1) {
-                                    System.err.println("[CLIENT]: Errore inviaDati. Esco..");
-                                    System.exit(1);
-                                }
-                            } break;
-                            case EDIT: case LOGGED: {
-                                System.err.println("[CLIENT-ERROR]: Devi prima eseguire il logout!");
-                            } break;
-                        }
-                    } break;
-                    case "quit": {
-                        System.out.println("Bye!");
-                        quit = true;
-                    } break;
-                    case "--help": {
-                        printUsage();
-                    } break;
-                    default: {
-                        System.err.println("Comando errato.");
-                        System.out.println("Per vedere i comandi disponibili usa: turing --help");
-                    }
-                }
+            if(!sintassiInputCorretta(currInput, regex)) {
+                System.err.println("Comando errato.");
+                System.out.println("Per vedere i comandi disponibili usa: turing --help");
             }
             else {
-                printUsage();
+                switch (statoClient) {
+                    case STARTED: {
+                        statoClient = statoStarted(comandi, socket, registratoreRemoto);
+                    } break;
+                    case LOGGED: {
+                        statoClient = statoLogged(comandi, socket);
+                    } break;
+                    case EDIT: {
+                    } break;
+                }
             }
         }
         inputUtente.close();

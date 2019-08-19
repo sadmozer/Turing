@@ -10,28 +10,23 @@ public class Registratore extends UnicastRemoteObject implements IRegistratore {
     }
 
     @Override
-    public Operazione registra(String username, String password) {
+    public boolean registra(String username, String password) {
         // Controllo argomenti
         if (username == null) {
-            return Operazione.UsernameMancante;
+            return false;
         }
         if (password == null) {
-            return Operazione.PasswordMancante;
+            return false;
         }
 
         // Registro il nuovo utente, se non lo è gia'
-        Utente res;
         try {
-            res = utentiRegistrati.putIfAbsent(username, new Utente(username, password));
+            utentiRegistrati.putIfAbsent(username, new Utente(username, password));
         } catch (Exception e) {
             e.printStackTrace();
-            return Operazione.ErroreGenerico;
+            return false;
         }
-        if (res != null) {
-            return Operazione.GiaRegistrato;
-        } else {
-            return Operazione.Successo;
-        }
+        return true;
     }
 
     @Override
