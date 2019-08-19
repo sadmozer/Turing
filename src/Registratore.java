@@ -31,19 +31,11 @@ public class Registratore extends UnicastRemoteObject implements IRegistratore {
 
     @Override
     public boolean isRegistrato(String username) {
-        // Controllo argomenti
-        if(username == null) {
-            return false;
-        }
-
-        // Controllo se l'utente è registrato
-        boolean res;
-        try {
-            res = utentiRegistrati.containsKey(username);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-        return res;
+        return utentiRegistrati.containsKey(username);
     }
+
+    public Utente getUtente(String username) {
+        return utentiRegistrati.getOrDefault(username, null);
+    }
+
 }

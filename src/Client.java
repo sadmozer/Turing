@@ -19,6 +19,7 @@ public class Client {
     private static int maxLungUsername = 20;
     private static int minLungPassword = 6;
     private static int maxLungPassword = 20;
+    private static int NUM_TENTATIVI_RICONNESSIONE = 3;
 
     private static IRegistratore setupRegistratore(int serverPort, String serverName) {
         IRegistratore registratoreRemoto = null;
@@ -36,7 +37,6 @@ public class Client {
         SocketChannel socket = null;
         try {
             socket = SocketChannel.open();
-            socket.configureBlocking(false);
         } catch (UnresolvedAddressException | IOException e) {
             e.printStackTrace();
             return null;
@@ -94,28 +94,28 @@ public class Client {
         return input.matches(regex);
     }
 
-    private static StatoClient opRegister(IRegistratore registratore, String username, String password) {
-        boolean err = false;
+    private static boolean controlloConnessionePersa() {
+        return true;
+    }
 
+    private static StatoClient opRegister(IRegistratore registratore, String username, String password) {
         // Controllo argomenti
         if (username.length() < minLungUsername) {
             System.err.println("L'username deve contenere almeno " + minLungUsername + " caratteri!");
-            err = true;
+            return StatoClient.STARTED;
         }
         else if (username.length() > maxLungUsername) {
             System.err.println("L'username deve contenere al massimo " + maxLungUsername + " caratteri!");
-            err = true;
+            return StatoClient.STARTED;
         }
         if (password.length() < minLungPassword) {
             System.err.println("La password deve contenere almeno " + minLungPassword+ " caratteri!");
-            err = true;
+            return StatoClient.STARTED;
         }
         else if (password.length() > maxLungPassword) {
             System.err.println("La password deve contenere al massimo " + maxLungPassword + " caratteri!");
-            err = true;
-        }
-        if (err)
             return StatoClient.STARTED;
+        }
 
         // Provo a registrare l'utente
         try {
@@ -141,14 +141,52 @@ public class Client {
     }
 
     private static StatoClient opLogin(SocketChannel socket, String username, String password) {
-        String msg = "login " + username + " " + password;
-        ByteBuffer byteMsg = ByteBuffer.wrap(msg.getBytes());
-        if(Connessione.inviaDati(socket, byteMsg, byteMsg.capacity()) == -1) {
-            System.err.println("[CLIENT]: Errore inviaDati.");
+        // Controllo argomenti
+        if (username.length() < minLungUsername) {
+            System.err.println("Username errato.");
             return StatoClient.STARTED;
         }
-        else {
-            return StatoClient.LOGGED;
+        else if (username.length() > maxLungUsername) {
+            System.err.println("Username errato.");
+            return StatoClient.STARTED;
+        }
+        if (password.length() < minLungPassword) {
+            System.err.println("Password errata.");
+            return StatoClient.STARTED;
+        }
+        else if (password.length() > maxLungPassword) {
+            System.err.println("Password errata.");
+            return StatoClient.STARTED;
+        }
+        Messaggio msgInvio = new Messaggio();
+        msgInvio.setBuffer("login " + username + " " + password);
+        if(Connessione.inviaDati(socket, msgInvio) == -1) {
+            System.err.println("Impossibile effettuare login. Riprova.");
+            return StatoClient.STARTED;
+        }
+
+        Messaggio msgRisposta = new Messaggio();
+        if((Connessione.riceviDati(socket, msgRisposta)) == -1) {
+            System.err.println("Impossibile effettuare login. Riprova.");
+            return StatoClient.STARTED;
+        }
+
+        switch (msgRisposta.getBuffer().getInt()) {
+            case 200: {
+                System.out.println("Login eseguito con successo.");
+                return StatoClient.LOGGED;
+            }
+            case 201: {
+                System.err.println("Utente inesistente. Prima devi registrarti.");
+                return StatoClient.STARTED;
+            }
+            case 202: {
+                System.err.println("Utente gia' loggato ");
+            }
+            default: {
+                System.err.println("Impossibile effettuare login. Riprova.");
+                return StatoClient.STARTED;
+            }
         }
     }
 
@@ -301,26 +339,28 @@ public class Client {
         boolean quit = false;
         StatoClient statoClient = StatoClient.STARTED;
         while (!(statoClient == StatoClient.QUIT)) {
-            System.out.printf("$ ");
-            currInput = inputUtente.nextLine();
-            comandi = currInput.split(" ");
 
-            if(!sintassiInputCorretta(currInput, regex)) {
-                System.err.println("Comando errato.");
-                System.out.println("Per vedere i comandi disponibili usa: turing --help");
-            }
-            else {
-                switch (statoClient) {
-                    case STARTED: {
+            switch (statoClient) {
+                case STARTED: {
+                    System.out.printf("$ ");
+                    currInput = inputUtente.nextLine();
+                    comandi = currInput.split(" ");
+
+                    if(!sintassiInputCorretta(currInput, regex)) {
+                        System.err.println("Comando errato.");
+                        System.out.println("Per vedere i comandi disponibili usa: turing --help");
+                    }
+                    else {
                         statoClient = statoStarted(comandi, socket, registratoreRemoto);
-                    } break;
-                    case LOGGED: {
-                        statoClient = statoLogged(comandi, socket);
-                    } break;
-                    case EDIT: {
-                    } break;
-                }
+                    }
+                } break;
+                case LOGGED: {
+                    statoClient = statoLogged(comandi, socket);
+                } break;
+                case EDIT: {
+                } break;
             }
+
         }
         inputUtente.close();
         try {

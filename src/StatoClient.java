@@ -2,5 +2,6 @@ public enum StatoClient {
     STARTED,
     LOGGED,
     EDIT,
-    QUIT
+    QUIT,
+    RECONNECTING
 }

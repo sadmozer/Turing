@@ -5,23 +5,19 @@ import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
 public class Connessione {
-    public static int inviaDati(SocketChannel socketChannel, ByteBuffer buffer, int dimBuffer) {
+    public static int inviaDati(SocketChannel socketChannel, Messaggio msg) {
         // Controllo argomenti
-        if (buffer.capacity() == 0) {
+        if (msg.getDimBuffer() == 0) {
             System.err.println("InviaDati: Buffer ha capacita 0!");
-            return -1;
-        }
-        if(dimBuffer <= 0) {
-            System.err.println("InviaDati: dimBuffer non valido!");
             return -1;
         }
 
         int bytesScritti = 0;
 
         // Invio la dimensione del buffer e il buffer insieme
-        ByteBuffer byteTot = ByteBuffer.allocate(Integer.BYTES+dimBuffer);
-        byteTot.putInt(dimBuffer);
-        byteTot.put(buffer);
+        ByteBuffer byteTot = ByteBuffer.allocate(Integer.BYTES+msg.getDimBuffer());
+        byteTot.putInt(msg.getDimBuffer());
+        byteTot.put(msg.getBuffer());
         byteTot.flip();
         try {
             while (byteTot.hasRemaining()) {
@@ -37,7 +33,7 @@ public class Connessione {
         return bytesScritti;
     }
 
-    public static ByteBuffer riceviDati(SocketChannel socketChannel) {
+    public static int riceviDati(SocketChannel socketChannel, Messaggio msg) {
         int bytesLetti1 = 0;
         int bytesLetti2 = 0;
 
@@ -48,7 +44,7 @@ public class Connessione {
             byteDim.rewind();
         } catch (IOException e) {
             e.printStackTrace();
-            return null;
+            return -1;
         }
         System.out.printf("RiceviDati: Bytes letti = %d\n", bytesLetti1);
 
@@ -62,7 +58,7 @@ public class Connessione {
         }
         else {
             System.err.println("RiceviDati: Errore prima lettura!");
-            return null;
+            return -1;
         }
 
         // Infine ricevo il buffer vero e proprio
@@ -73,16 +69,17 @@ public class Connessione {
         } catch (IOException e) {
             e.printStackTrace();
             System.err.println("RiceviDati: Errore seconda lettura!");
-            return null;
+            return -1;
         }
         System.out.printf("RiceviDati: Bytes letti = %d\n", bytesLetti2);
 
         if (bytesLetti2 > 0) {
-            return buffer;
+            msg.setBuffer(buffer);
+            return bytesLetti1 + bytesLetti2;
         }
         else {
             System.err.println("RiceviDati: Errore seconda lettura!");
-            return null;
+            return -1;
         }
     }
 
