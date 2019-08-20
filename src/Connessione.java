@@ -64,7 +64,6 @@ public class Connessione {
         // Infine ricevo il buffer vero e proprio
         try {
             bytesLetti2 = socketChannel.read(buffer);
-            buffer.rewind();
             buffer.flip();
         } catch (IOException e) {
             e.printStackTrace();

@@ -160,12 +160,11 @@ public class Server {
                         allegato.setMessaggio(msgRisposta);
                         switch (operazione) {
                             case "login": {
-
                                 if (!registratore.isRegistrato(username)) {
                                     msgRisposta.setBuffer(201);
                                     allegato.setUtenteSconosciuto(true);
                                 }
-                                else if (registratore.getUtente(username).getPassword().equals(password)){
+                                else if (!registratore.getUtente(username).getPassword().equals(password)){
                                     msgRisposta.setBuffer(202);
                                     allegato.setUtenteSconosciuto(true);
                                 }
@@ -203,6 +202,11 @@ public class Server {
                     }
                     else {
                         System.out.println("[SERVER]: Messaggio inviato con successo!");
+                    }
+                    try {
+                        client.register(serverSelector, SelectionKey.OP_READ);
+                    } catch (ClosedChannelException e) {
+                        e.printStackTrace();
                     }
 
                 }

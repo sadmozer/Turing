@@ -82,7 +82,7 @@ public class Client {
     private static String costruisciRegex() {
         String regex = "";
         regex += "(turing\\sregister\\s\\w+\\s\\w+|";
-        regex += "turing\\slogin\\s\\w+}\\s\\w+}|";
+        regex += "turing\\slogin\\s\\w+\\s\\w+|";
         regex += "turing\\slogout|";
         regex += "turing\\squit|";
         regex += "turing\\s--help)";
@@ -174,14 +174,19 @@ public class Client {
         switch (msgRisposta.getBuffer().getInt()) {
             case 200: {
                 System.out.println("Login eseguito con successo.");
-                return StatoClient.LOGGED;
+                return StatoClient.STARTED;
             }
             case 201: {
                 System.err.println("Utente inesistente. Prima devi registrarti.");
                 return StatoClient.STARTED;
             }
             case 202: {
+                System.err.println("Password errata.");
+                return StatoClient.STARTED;
+            }
+            case 203: {
                 System.err.println("Utente gia' loggato ");
+                return StatoClient.STARTED;
             }
             default: {
                 System.err.println("Impossibile effettuare login. Riprova.");

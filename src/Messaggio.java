@@ -21,7 +21,9 @@ public class Messaggio {
     }
 
     void setBuffer(int num) {
+        this.buffer = ByteBuffer.allocate(Integer.BYTES);
         this.buffer.putInt(num);
+        this.buffer.flip();
     }
     int getDimBuffer() {
         return this.buffer.capacity();
