@@ -1,7 +1,9 @@
+import java.io.File;
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnresolvedAddressException;
 import java.rmi.NotBoundException;
@@ -21,6 +23,7 @@ public class Client {
     private static int maxLungPassword = 20;
     private static int NUM_TENTATIVI_RICONNESSIONE = 3;
 
+    // Setup
     private static IRegistratore setupRegistratore(int serverPort, String serverName) {
         IRegistratore registratoreRemoto = null;
         try {
@@ -57,6 +60,7 @@ public class Client {
         return true;
     }
 
+    // CLI
     private static void printUsage() {
         System.out.printf("USAGE%n");
         System.out.printf("  $ turing COMMAND [ARGS...]%n%n");
@@ -94,139 +98,161 @@ public class Client {
         return input.matches(regex);
     }
 
-    private static boolean controlloConnessionePersa() {
-        return true;
-    }
+    // Automa
+    private static void opRegister(StatoClient statoClient, String username, String password) {
+        IRegistratore registratore = statoClient.getRegistratore();
 
-    private static StatoClient opRegister(IRegistratore registratore, String username, String password) {
-        // Controllo argomenti
-        if (username.length() < minLungUsername) {
-            System.err.println("L'username deve contenere almeno " + minLungUsername + " caratteri!");
-            return StatoClient.STARTED;
-        }
-        else if (username.length() > maxLungUsername) {
-            System.err.println("L'username deve contenere al massimo " + maxLungUsername + " caratteri!");
-            return StatoClient.STARTED;
-        }
-        if (password.length() < minLungPassword) {
-            System.err.println("La password deve contenere almeno " + minLungPassword+ " caratteri!");
-            return StatoClient.STARTED;
-        }
-        else if (password.length() > maxLungPassword) {
-            System.err.println("La password deve contenere al massimo " + maxLungPassword + " caratteri!");
-            return StatoClient.STARTED;
-        }
-
-        // Provo a registrare l'utente
+        // Controllo che non sia gia' registrato
         try {
-            if (!registratore.isRegistrato(username)) {
-                if(registratore.registra(username, password)) {
-                    System.out.println("Registrazione eseguita con successo.");
-                    return StatoClient.STARTED;
-                }
-                else {
-                    System.err.println("Registrazione fallita. Riprova.");
-                    return StatoClient.STARTED;
-                }
-            }
-            else {
+            if (registratore.isRegistrato(username)) {
                 System.err.println("Utente gia' registrato, scegli un altro username.");
-                return StatoClient.STARTED;
+                return;
             }
         } catch (RemoteException e) {
             e.printStackTrace();
             System.err.println("Registrazione fallita. Riprova.");
-            return StatoClient.STARTED;
+        }
+
+        // Controllo il formato di username e password
+        if (username.length() < minLungUsername) {
+            System.err.println("L'username deve contenere almeno " + minLungUsername + " caratteri!");
+            return;
+        }
+        else if (username.length() > maxLungUsername) {
+            System.err.println("L'username deve contenere al massimo " + maxLungUsername + " caratteri!");
+            return;
+        }
+        if (password.length() < minLungPassword) {
+            System.err.println("La password deve contenere almeno " + minLungPassword+ " caratteri!");
+            return;
+        }
+        else if (password.length() > maxLungPassword) {
+            System.err.println("La password deve contenere al massimo " + maxLungPassword + " caratteri!");
+            return;
+        }
+
+        // Provo a registrare l'utente
+        try {
+            if(registratore.registra(username, password)) {
+                System.out.println("Registrazione eseguita con successo.");
+            }
+            else {
+                System.err.println("Registrazione fallita. Riprova.");
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+            System.err.println("Registrazione fallita. Riprova.");
         }
     }
 
-    private static StatoClient opLogin(SocketChannel socket, String username, String password) {
-        // Controllo argomenti
+    private static void opLogin(StatoClient statoClient, String username, String password) {
+        SocketChannel socket = statoClient.getSocket();
+
+        // Controllo il formato di username e password
         if (username.length() < minLungUsername) {
             System.err.println("Username errato.");
-            return StatoClient.STARTED;
+            return;
         }
         else if (username.length() > maxLungUsername) {
             System.err.println("Username errato.");
-            return StatoClient.STARTED;
+            return;
         }
         if (password.length() < minLungPassword) {
             System.err.println("Password errata.");
-            return StatoClient.STARTED;
+            return;
         }
         else if (password.length() > maxLungPassword) {
             System.err.println("Password errata.");
-            return StatoClient.STARTED;
+            return;
         }
         Messaggio msgInvio = new Messaggio();
         msgInvio.setBuffer("login " + username + " " + password);
         if(Connessione.inviaDati(socket, msgInvio) == -1) {
             System.err.println("Impossibile effettuare login. Riprova.");
-            return StatoClient.STARTED;
+            return;
         }
 
         Messaggio msgRisposta = new Messaggio();
         if((Connessione.riceviDati(socket, msgRisposta)) == -1) {
             System.err.println("Impossibile effettuare login. Riprova.");
-            return StatoClient.STARTED;
+            return;
         }
 
         switch (msgRisposta.getBuffer().getInt()) {
             case 200: {
                 System.out.println("Login eseguito con successo.");
-                return StatoClient.STARTED;
-            }
+                statoClient.setUtenteLoggato(username);
+                statoClient.setStato(Stato.LOGGED);
+            } break;
             case 201: {
                 System.err.println("Utente inesistente. Prima devi registrarti.");
-                return StatoClient.STARTED;
-            }
+            } break;
             case 202: {
                 System.err.println("Password errata.");
-                return StatoClient.STARTED;
-            }
+            } break;
             case 203: {
-                System.err.println("Utente gia' loggato ");
-                return StatoClient.STARTED;
-            }
+                System.err.println("Sei gia' loggato!");
+            } break;
             default: {
                 System.err.println("Impossibile effettuare login. Riprova.");
-                return StatoClient.STARTED;
             }
         }
     }
 
-    private static StatoClient opCreate(SocketChannel socket, String doc, int numSezioni) {
-        return StatoClient.LOGGED;
+    private static void opCreate(StatoClient statoClient, String doc, int numSezioni) {
+
     }
 
-    private static StatoClient opShare(SocketChannel socket, String doc, String username) {
-        return StatoClient.LOGGED;
+    private static void opShare(StatoClient statoClient, String doc, String username) {
     }
 
-    private static StatoClient opShow(SocketChannel socket, String doc) {
-        return StatoClient.LOGGED;
+    private static void opShow(StatoClient statoClient, String doc) {
     }
 
-    private static StatoClient opList(SocketChannel socket) {
-        return StatoClient.LOGGED;
+    private static void opList(StatoClient statoClient) {
     }
 
-    private static StatoClient opEdit(SocketChannel socket, String doc, String sec) {
-        return StatoClient.EDIT;
+    private static void opEdit(StatoClient statoClient, String doc, String sec) {
     }
 
-    private static StatoClient opLogout() {
-        return StatoClient.STARTED;
+    private static void opLogout(StatoClient statoClient) {
+        SocketChannel socket = statoClient.getSocket();
+
+        Messaggio msgInvio = new Messaggio();
+        msgInvio.setBuffer("logout");
+        if (Connessione.inviaDati(socket, msgInvio) == -1) {
+            System.err.println("Impossibile effettuare logout. Riprova.");
+            return;
+        }
+
+        Messaggio msgRisposta = new Messaggio();
+        if (Connessione.riceviDati(socket, msgRisposta) == -1) {
+            System.err.println("Impossibile effettuare logout. Riprova.");
+            return;
+        }
+
+        switch (msgRisposta.getBuffer().getInt()) {
+            case 203:
+            case 204:
+            case 205: {
+                System.err.println("Impossibile effettuare logout. Riprova.");
+            } break;
+            case 200: {
+                System.out.println("Logout eseguito con successo.");
+                statoClient.setUtenteLoggato("");
+                statoClient.setStato(Stato.STARTED);
+            }
+        }
     }
 
-    private static StatoClient statoStarted(String[] comandi, SocketChannel socket, IRegistratore registratore) {
-        StatoClient statoClient = StatoClient.STARTED;
+    private static void statoStarted(String[] comandi, StatoClient statoClient) {
+        statoClient.setStato(Stato.STARTED);
         switch (comandi[1]) {
             case "register": {
-                statoClient = opRegister(registratore, comandi[2], comandi[3]);
+                opRegister(statoClient, comandi[2], comandi[3]);
             } break;
             case "login": {
-                statoClient = opLogin(socket, comandi[2], comandi[3]);
+                opLogin(statoClient, comandi[2], comandi[3]);
             } break;
             case "--help": {
                 printUsage();
@@ -243,40 +269,39 @@ public class Client {
                 System.err.println("Devi prima eseguire il login!");
             } break;
             case "quit": {
-                statoClient = StatoClient.QUIT;
+                statoClient.setStato(Stato.QUIT);
             } break;
             default: {
-                System.err.println("bhComando errato.");
+                System.err.println("Comando errato.");
                 System.out.println("Per vedere i comandi disponibili usa: turing --help");
-                statoClient = StatoClient.STARTED;
+                statoClient.setStato(Stato.STARTED);
             }
         }
-        return statoClient;
     }
 
-    private static StatoClient statoLogged(String[] comandi, SocketChannel socket) {
-        StatoClient statoClient = StatoClient.STARTED;
+    private static void statoLogged(String[] comandi, StatoClient statoClient) {
+        statoClient.setStato(Stato.STARTED);
         switch (comandi[1]) {
             case "create": {
-                statoClient = opCreate(socket, comandi[2], Integer.parseInt(comandi[3]));
+                opCreate(statoClient, comandi[2], Integer.parseInt(comandi[3]));
             } break;
             case "share": {
-                statoClient = opShare(socket, comandi[2], comandi[3]);
+                opShare(statoClient, comandi[2], comandi[3]);
             } break;
             case "show": {
-                statoClient = opShow(socket, comandi[2]);
+                opShow(statoClient, comandi[2]);
             } break;
             case "list": {
-                statoClient = opList(socket);
+                opList(statoClient);
             } break;
             case "edit": {
-                statoClient = opEdit(socket, comandi[2], comandi[3]);
+                opEdit(statoClient, comandi[2], comandi[3]);
             } break;
             case "--help": {
                 printUsage();
             } break;
             case "logout": {
-                statoClient = opLogout();
+                opLogout(statoClient);
             } break;
             case "register":
             case "login": {
@@ -292,11 +317,9 @@ public class Client {
                 System.out.println("Per vedere i comandi disponibili usa: turing --help");
             }
         }
-        return statoClient;
     }
 
-    private static StatoClient statoEdit(String[] comandi, SocketChannel socket) {
-        return StatoClient.EDIT;
+    private static void statoEdit(String[] comandi, StatoClient statoClient) {
     }
 
     public static void main (String[] args) {
@@ -342,12 +365,19 @@ public class Client {
         String comandi[] = null;
         String currInput = "";
         boolean quit = false;
-        StatoClient statoClient = StatoClient.STARTED;
-        while (!(statoClient == StatoClient.QUIT)) {
+        StatoClient statoClient = new StatoClient(registratoreRemoto, socket, Stato.STARTED);
 
-            switch (statoClient) {
+        // Ciclo principale
+        while (!(statoClient.getStato() == Stato.QUIT)) {
+
+            switch (statoClient.getStato()) {
                 case STARTED: {
-                    System.out.printf("$ ");
+                    if (!statoClient.getUtenteLoggato().equals("")) {
+                        System.out.printf("[%s]$ ", statoClient.getUtenteLoggato());
+                    }
+                    else {
+                        System.out.printf("$ ");
+                    }
                     currInput = inputUtente.nextLine();
                     comandi = currInput.split(" ");
 
@@ -356,11 +386,26 @@ public class Client {
                         System.out.println("Per vedere i comandi disponibili usa: turing --help");
                     }
                     else {
-                        statoClient = statoStarted(comandi, socket, registratoreRemoto);
+                        statoStarted(comandi, statoClient);
                     }
                 } break;
                 case LOGGED: {
-                    statoClient = statoLogged(comandi, socket);
+                    if (!statoClient.getUtenteLoggato().equals("")) {
+                        System.out.printf("[%s]$ ", statoClient.getUtenteLoggato());
+                    }
+                    else {
+                        System.out.printf("$ ");
+                    }
+                    currInput = inputUtente.nextLine();
+                    comandi = currInput.split(" ");
+
+                    if(!sintassiInputCorretta(currInput, regex)) {
+                        System.err.println("Comando errato.");
+                        System.out.println("Per vedere i comandi disponibili usa: turing --help");
+                    }
+                    else {
+                        statoLogged(comandi, statoClient);
+                    }
                 } break;
                 case EDIT: {
                 } break;

@@ -6,7 +6,6 @@ public class Allegato {
     public Allegato(Messaggio messaggio, Utente utente, boolean utenteSconosciuto) {
         this.messaggio = messaggio;
         this.utente = utente;
-        this.utenteSconosciuto = utenteSconosciuto;
     }
 
     public Allegato() {
@@ -28,11 +27,4 @@ public class Allegato {
         this.messaggio = messaggio;
     }
 
-    public boolean isUtenteSconosciuto() {
-        return utenteSconosciuto;
-    }
-
-    public void setUtenteSconosciuto(boolean utenteSconosciuto) {
-        this.utenteSconosciuto = utenteSconosciuto;
-    }
 }

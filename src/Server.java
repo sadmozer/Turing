@@ -153,39 +153,61 @@ public class Server {
                         System.out.printf("[SERVER]: Messaggio ricevuto: %s\n", msgRicevuto.toString());
                         String[] comandi = msgRicevuto.toString().split(" ");
                         String operazione = comandi[0];
-                        String username = comandi[1];
-                        String password = comandi[2];
                         Messaggio msgRisposta = new Messaggio();
                         Allegato allegato = new Allegato();
                         allegato.setMessaggio(msgRisposta);
                         switch (operazione) {
                             case "login": {
+                                String username = comandi[1];
+                                String password = comandi[2];
                                 if (!registratore.isRegistrato(username)) {
                                     msgRisposta.setBuffer(201);
-                                    allegato.setUtenteSconosciuto(true);
+                                    allegato.setUtente(null);
+                                    System.err.println("[SERVER-ERROR]: Utente non registrato prova login.");
                                 }
                                 else if (!registratore.getUtente(username).getPassword().equals(password)){
                                     msgRisposta.setBuffer(202);
-                                    allegato.setUtenteSconosciuto(true);
+                                    allegato.setUtente(registratore.getUtente(username));
+                                    System.err.printf("[SERVER-ERROR]: Password errata per account %s%n", username);
                                 }
                                 else if (gestoreSessioni.isLoggato(username)) {
                                     msgRisposta.setBuffer(203);
                                     allegato.setUtente(registratore.getUtente(username));
-                                    allegato.setUtenteSconosciuto(false);
+                                    System.err.printf("[SERVER-ERROR]: Utente %s gia' loggato.%n", username);
                                 }
                                 else if (gestoreSessioni.login(username, registratore.getUtente(username))) {
                                     msgRisposta.setBuffer(200);
                                     allegato.setUtente(registratore.getUtente(username));
-                                    allegato.setUtenteSconosciuto(false);
+                                    System.out.printf("[SERVER]: Login %s effettuato.%n", username);
                                 }
                                 else {
                                     msgRisposta.setBuffer(199);
                                     allegato.setUtente(registratore.getUtente(username));
-                                    allegato.setUtenteSconosciuto(false);
+                                    System.err.printf("[SERVER-ERROR]: Errore login %s%n.", username);
+                                }
+                            } break;
+                            case "logout": {
+                                String username = ((Allegato) key.attachment()).getUtente().getUsername();
+                                if(username == null) {
+                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto.");
+                                    msgRisposta.setBuffer(203);
+                                }
+                                else if (!gestoreSessioni.isLoggato(username)){
+                                    System.err.printf("[SERVER-ERROR]: Errore utente %s non loggato.%n", username);
+                                    msgRisposta.setBuffer(204);
+                                }
+                                else if (!gestoreSessioni.logout(username)){
+                                    System.err.printf("[SERVER-ERROR]: Errore logout %s.%n", username);
+                                    msgRisposta.setBuffer(205);
+                                }
+                                else {
+                                    System.out.printf("[SERVER]: Logout %s effettuato.%n", username);
+                                    msgRisposta.setBuffer(200);
                                 }
                             } break;
                         }
 
+                        // Preparo il canale per l'invio della risposta
                         try {
                             client.register(serverSelector, SelectionKey.OP_WRITE, allegato);
                         } catch (ClosedChannelException e) {
@@ -203,6 +225,8 @@ public class Server {
                     else {
                         System.out.println("[SERVER]: Messaggio inviato con successo!");
                     }
+
+                    // Preparo il canale per ricevere nuove operazioni
                     try {
                         client.register(serverSelector, SelectionKey.OP_READ);
                     } catch (ClosedChannelException e) {

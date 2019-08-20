@@ -28,7 +28,7 @@ public class Connessione {
             System.err.println("InviaDati: Errore scrittura!");
             return -1;
         }
-        System.out.printf("InviaDati: Bytes scritti = %d\n", bytesScritti);
+//        System.out.printf("InviaDati: Bytes scritti = %d\n", bytesScritti);
 
         return bytesScritti;
     }
@@ -46,10 +46,10 @@ public class Connessione {
             e.printStackTrace();
             return -1;
         }
-        System.out.printf("RiceviDati: Bytes letti = %d\n", bytesLetti1);
+//        System.out.printf("RiceviDati: Bytes letti = %d\n", bytesLetti1);
 
         int dim = byteDim.getInt();
-        System.out.printf("RiceviDati: Dimensione msg = %d\n", dim);
+//        System.out.printf("RiceviDati: Dimensione msg = %d\n", dim);
 
         // Poi alloco un buffer di una capacita pari alla dimensione
         ByteBuffer buffer = null;
@@ -70,7 +70,7 @@ public class Connessione {
             System.err.println("RiceviDati: Errore seconda lettura!");
             return -1;
         }
-        System.out.printf("RiceviDati: Bytes letti = %d\n", bytesLetti2);
+//        System.out.printf("RiceviDati: Bytes letti = %d\n", bytesLetti2);
 
         if (bytesLetti2 > 0) {
             msg.setBuffer(buffer);

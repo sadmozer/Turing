@@ -13,4 +13,7 @@ public class GestoreSessioni {
     public boolean login(String username, Utente utente) {
          return (utentiLoggati.putIfAbsent(username, utente) == null);
     }
+    public boolean logout(String username) {
+        return (utentiLoggati.remove(username) != null);
+    }
 }
