@@ -6,6 +6,9 @@ import java.nio.CharBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnresolvedAddressException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -22,6 +25,7 @@ public class Client {
     private static int minLungPassword = 6;
     private static int maxLungPassword = 20;
     private static int NUM_TENTATIVI_RICONNESSIONE = 3;
+    private static String DEFAULT_DOCS_DIRECTORY = System.getProperty("user.dir") + File.separator + "data_client";
 
     // Setup
     private static IRegistratore setupRegistratore(int serverPort, String serverName) {
@@ -87,6 +91,7 @@ public class Client {
         String regex = "";
         regex += "(turing\\sregister\\s\\w+\\s\\w+|";
         regex += "turing\\slogin\\s\\w+\\s\\w+|";
+        regex += "turing\\screate\\s\\w+\\s\\w+|";
         regex += "turing\\slogout|";
         regex += "turing\\squit|";
         regex += "turing\\s--help)";
@@ -131,18 +136,25 @@ public class Client {
             return;
         }
 
+
         // Provo a registrare l'utente
+        Path pathDatiUtente = Paths.get(DEFAULT_DOCS_DIRECTORY + File.separator + username);
         try {
-            if(registratore.registra(username, password)) {
-                System.out.println("Registrazione eseguita con successo.");
-            }
-            else {
+            if(!registratore.registra(username, password)) {
                 System.err.println("Registrazione fallita. Riprova.");
             }
-        } catch (RemoteException e) {
+            else {
+                if (Files.notExists(pathDatiUtente)) {
+                    Files.createDirectory(pathDatiUtente);
+                }
+                System.out.println("Registrazione eseguita con successo.");
+            }
+        } catch (IOException e) {
             e.printStackTrace();
             System.err.println("Registrazione fallita. Riprova.");
         }
+
+
     }
 
     private static void opLogin(StatoClient statoClient, String username, String password) {
@@ -167,6 +179,7 @@ public class Client {
         }
         Messaggio msgInvio = new Messaggio();
         msgInvio.setBuffer("login " + username + " " + password);
+
         if(Connessione.inviaDati(socket, msgInvio) == -1) {
             System.err.println("Impossibile effettuare login. Riprova.");
             return;
@@ -191,7 +204,7 @@ public class Client {
                 System.err.println("Password errata.");
             } break;
             case 203: {
-                System.err.println("Sei gia' loggato!");
+                System.err.printf("Sei gia' loggato come %s%nDevi prima eseguire il logout!", username);
             } break;
             default: {
                 System.err.println("Impossibile effettuare login. Riprova.");
@@ -199,7 +212,56 @@ public class Client {
         }
     }
 
-    private static void opCreate(StatoClient statoClient, String doc, int numSezioni) {
+    private static void opCreate(StatoClient statoClient, String doc, String numSezioni) {
+        String username = statoClient.getUtenteLoggato();
+        SocketChannel socket = statoClient.getSocket();
+        int numSez = -1;
+
+        // Controllo il formato di doc e numSezioni
+        try {
+            numSez = Integer.parseInt(numSezioni);
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+            System.err.println("Il numero di sezioni deve essere positivo!");
+            return;
+        }
+        if (numSez <= 0) {
+            System.err.println("Il numero di sezioni deve essere positivo!");
+            return;
+        }
+
+        Messaggio msgInvio = new Messaggio();
+        Messaggio msgRisposta = new Messaggio();
+        msgInvio.setBuffer("create " + doc + " " + numSezioni);
+        if (Connessione.inviaDati(socket, msgInvio) == -1) {
+            System.err.println("Impossibile creare documento. Riprova.");
+            return;
+        }
+
+        if (Connessione.riceviDati(socket, msgRisposta) == -1) {
+            System.err.println("Impossibile creare documento. Riprova.");
+            return;
+        }
+
+        switch (msgRisposta.getBuffer().getInt()) {
+            case 200: {
+                System.out.println("Documento creato con successo.");
+            } break;
+        }
+
+
+        Path dirPath = Paths.get(DEFAULT_DOCS_DIRECTORY + File.separator + username + File.separator + doc);
+        try {
+            if(!Files.exists(dirPath)) {
+                Files.createDirectory(dirPath);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.err.println("Impossibile creare directory documenti. Riprova.");
+            return;
+        }
+        System.out.printf("Creata directory documenti %s%n", dirPath);
+
 
     }
 
@@ -280,10 +342,10 @@ public class Client {
     }
 
     private static void statoLogged(String[] comandi, StatoClient statoClient) {
-        statoClient.setStato(Stato.STARTED);
+        statoClient.setStato(Stato.LOGGED);
         switch (comandi[1]) {
             case "create": {
-                opCreate(statoClient, comandi[2], Integer.parseInt(comandi[3]));
+                opCreate(statoClient, comandi[2], comandi[3]);
             } break;
             case "share": {
                 opShare(statoClient, comandi[2], comandi[3]);
@@ -305,7 +367,7 @@ public class Client {
             } break;
             case "register":
             case "login": {
-                System.err.println("Devi prima eseguire il logout!");
+                System.err.printf("Sei loggato come %s.%nDevi prima eseguire il logout!%n", statoClient.getUtenteLoggato());
             }
             case "end-edit":
             case "send":
@@ -356,6 +418,17 @@ public class Client {
         while (!tryConnect(socket, serverAddress)) {
             System.err.println("[CLIENT]: Impossibile connettersi! Riprovo..");
         }
+
+        // Creo cartella dei documenti
+        try {
+            if (Files.notExists(Paths.get(DEFAULT_DOCS_DIRECTORY))) {
+                Files.createDirectory(Paths.get(DEFAULT_DOCS_DIRECTORY));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
         System.out.printf("[CLIENT]: Connesso a %s sulla porta %d%n", hostAddress, DEFAULT_CLIENT_PORT);
         System.out.println("[CLIENT]: Benvenuto su Turing CLI! Per vedere i comandi disponibili usa: turing --help");
 
@@ -369,7 +442,6 @@ public class Client {
 
         // Ciclo principale
         while (!(statoClient.getStato() == Stato.QUIT)) {
-
             switch (statoClient.getStato()) {
                 case STARTED: {
                     if (!statoClient.getUtenteLoggato().equals("")) {
