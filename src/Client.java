@@ -24,6 +24,10 @@ public class Client {
     private static int maxLungUsername = 20;
     private static int minLungPassword = 6;
     private static int maxLungPassword = 20;
+    private static int minLungDocumento = 3;
+    private static int maxLungDocumento = 20;
+    private static int minNumSezioni = 1;
+    private static int maxNumSezioni = 50;
     private static int NUM_TENTATIVI_RICONNESSIONE = 3;
     private static String DEFAULT_DOCS_DIRECTORY = System.getProperty("user.dir") + File.separator + "data_client";
 
@@ -89,9 +93,10 @@ public class Client {
 
     private static String costruisciRegex() {
         String regex = "";
-        regex += "(turing\\sregister\\s\\w+\\s\\w+|";
-        regex += "turing\\slogin\\s\\w+\\s\\w+|";
-        regex += "turing\\screate\\s\\w+\\s\\w+|";
+        regex += "(turing\\sregister\\s([^\\s]+)\\s([^\\s]+)|";
+        regex += "turing\\slogin\\s([^\\s]+)\\s([^\\s]+)|";
+        regex += "turing\\screate\\s([^\\s]+)\\s([^\\s]+)|";
+        regex += "turing\\slist|";
         regex += "turing\\slogout|";
         regex += "turing\\squit|";
         regex += "turing\\s--help)";
@@ -107,6 +112,42 @@ public class Client {
     private static void opRegister(StatoClient statoClient, String username, String password) {
         IRegistratore registratore = statoClient.getRegistratore();
 
+        // Controllo il formato di username
+        boolean errore = false;
+
+        if (!username.matches("^[a-zA-Z0-9]+$")) {
+            System.err.println("L'username deve contenere solo caratteri alfanumerici.");
+            errore = true;
+        }
+
+        if (username.length() < minLungUsername) {
+            System.err.println("L'username deve contenere almeno " + minLungUsername + " caratteri!");
+            errore = true;
+        }
+        else if (username.length() > maxLungUsername) {
+            System.err.println("L'username deve contenere al massimo " + maxLungUsername + " caratteri!");
+            errore = true;
+        }
+
+        // Controllo il formato di password
+        if (!password.matches("^[a-zA-Z0-9]+$")) {
+            System.err.println("La password deve contenere solo caratteri alfanumerici.");
+            errore = true;
+        }
+
+        if (password.length() < minLungPassword) {
+            System.err.println("La password deve contenere almeno " + minLungPassword+ " caratteri!");
+            errore = true;
+        }
+        else if (password.length() > maxLungPassword) {
+            System.err.println("La password deve contenere al massimo " + maxLungPassword + " caratteri!");
+            errore = true;
+        }
+
+        if (errore) {
+            return;
+        }
+
         // Controllo che non sia gia' registrato
         try {
             if (registratore.isRegistrato(username)) {
@@ -117,25 +158,6 @@ public class Client {
             e.printStackTrace();
             System.err.println("Registrazione fallita. Riprova.");
         }
-
-        // Controllo il formato di username e password
-        if (username.length() < minLungUsername) {
-            System.err.println("L'username deve contenere almeno " + minLungUsername + " caratteri!");
-            return;
-        }
-        else if (username.length() > maxLungUsername) {
-            System.err.println("L'username deve contenere al massimo " + maxLungUsername + " caratteri!");
-            return;
-        }
-        if (password.length() < minLungPassword) {
-            System.err.println("La password deve contenere almeno " + minLungPassword+ " caratteri!");
-            return;
-        }
-        else if (password.length() > maxLungPassword) {
-            System.err.println("La password deve contenere al massimo " + maxLungPassword + " caratteri!");
-            return;
-        }
-
 
         // Provo a registrare l'utente
         Path pathDatiUtente = Paths.get(DEFAULT_DOCS_DIRECTORY + File.separator + username);
@@ -217,16 +239,39 @@ public class Client {
         SocketChannel socket = statoClient.getSocket();
         int numSez = -1;
 
-        // Controllo il formato di doc e numSezioni
+        // Controllo il formato di doc
+        boolean errore = false;
+        if (!doc.matches("^[a-zA-Z0-9]+$")) {
+            System.err.println("Il nome documento deve contenere solo caratteri alfanumerici.");
+            errore = true;
+        }
+
+        if (doc.length() < minLungDocumento) {
+            System.err.printf("Il nome documento deve contenere almeno %d caratteri.%n", minLungDocumento);
+            errore = true;
+        }
+        else if(doc.length() > maxLungDocumento) {
+            System.err.printf("Il nome documento deve contenere al massimo %d caratteri.%n", maxLungDocumento);
+            errore = true;
+        }
+
+        // Controllo il formato di numSezioni
         try {
             numSez = Integer.parseInt(numSezioni);
+            if (numSez <= minNumSezioni) {
+                System.err.printf("Il numero di sezioni deve essere maggiore di %d.%n", minNumSezioni);
+                errore = true;
+            }
+            else if (numSez > maxNumSezioni) {
+                System.err.printf("Il numero di sezioni deve essere minore di %d.%n", maxNumSezioni);
+                errore = true;
+            }
         } catch (NumberFormatException e) {
-            e.printStackTrace();
-            System.err.println("Il numero di sezioni deve essere positivo!");
-            return;
+            System.err.printf("Il numero di sezioni deve essere un intero compreso tra %d e %d.%n", minNumSezioni, maxNumSezioni);
+            errore = true;
         }
-        if (numSez <= 0) {
-            System.err.println("Il numero di sezioni deve essere positivo!");
+
+        if (errore) {
             return;
         }
 
@@ -247,9 +292,19 @@ public class Client {
             case 200: {
                 System.out.println("Documento creato con successo.");
             } break;
+            case 201: {
+                System.err.println("Documento gia' presente.");
+                return;
+            }
+            case 203:
+            case 204:
+            case 205: {
+                System.err.println("Impossibile creare documento. Riprova.");
+                return;
+            }
         }
 
-
+        // Creo la directory contentente le sezioni del documento
         Path dirPath = Paths.get(DEFAULT_DOCS_DIRECTORY + File.separator + username + File.separator + doc);
         try {
             if(!Files.exists(dirPath)) {
@@ -261,8 +316,6 @@ public class Client {
             return;
         }
         System.out.printf("Creata directory documenti %s%n", dirPath);
-
-
     }
 
     private static void opShare(StatoClient statoClient, String doc, String username) {
@@ -272,6 +325,40 @@ public class Client {
     }
 
     private static void opList(StatoClient statoClient) {
+        SocketChannel socket = statoClient.getSocket();
+
+        Messaggio msgInvio = new Messaggio();
+        msgInvio.setBuffer("list");
+        if (Connessione.inviaDati(socket, msgInvio) == -1) {
+            System.err.println("Impossibile ricevere lista documenti. Riprova.");
+            return;
+        }
+
+        Messaggio msgRisposta = new Messaggio();
+        if (Connessione.riceviDati(socket, msgRisposta) == -1) {
+            System.err.println("Impossibile ricevere lista documenti. Riprova.");
+            return;
+        }
+
+        switch (msgRisposta.getBuffer().getInt()) {
+            case 203:
+            case 204:
+            case 205: {
+                System.err.println("Impossibile ricevere lista documenti. Riprova.");
+            } break;
+            case 201: {
+                System.err.println("Non hai alcun documento.");
+            } break;
+            case 200: {
+                System.out.println("Lista ricevuta con successo.");
+                ByteBuffer buf = msgRisposta.getBuffer();
+                int dimMsg = buf.getInt();
+                byte[] bytes = new byte[dimMsg];
+                msgRisposta.getBuffer().get(bytes);
+                String lista = new String(bytes);
+                System.out.printf(lista);
+            } break;
+        }
     }
 
     private static void opEdit(StatoClient statoClient, String doc, String sec) {
@@ -428,7 +515,6 @@ public class Client {
             e.printStackTrace();
         }
 
-
         System.out.printf("[CLIENT]: Connesso a %s sulla porta %d%n", hostAddress, DEFAULT_CLIENT_PORT);
         System.out.println("[CLIENT]: Benvenuto su Turing CLI! Per vedere i comandi disponibili usa: turing --help");
 
@@ -451,7 +537,7 @@ public class Client {
                         System.out.printf("$ ");
                     }
                     currInput = inputUtente.nextLine();
-                    comandi = currInput.split(" ");
+                    comandi = currInput.split("\\s+");
 
                     if(!sintassiInputCorretta(currInput, regex)) {
                         System.err.println("Comando errato.");
@@ -469,7 +555,7 @@ public class Client {
                         System.out.printf("$ ");
                     }
                     currInput = inputUtente.nextLine();
-                    comandi = currInput.split(" ");
+                    comandi = currInput.split("\\s+");
 
                     if(!sintassiInputCorretta(currInput, regex)) {
                         System.err.println("Comando errato.");
