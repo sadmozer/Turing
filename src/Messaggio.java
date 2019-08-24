@@ -2,7 +2,6 @@ import java.nio.ByteBuffer;
 
 public class Messaggio {
     private ByteBuffer buffer;
-    private int dimBuffer;
 
     Messaggio() {
         this.buffer = null;
@@ -27,6 +26,14 @@ public class Messaggio {
     }
     int getDimBuffer() {
         return this.buffer.capacity();
+    }
+
+    void appendBuffer(ByteBuffer buffer) {
+        ByteBuffer nuovoBuffer = ByteBuffer.allocate(this.buffer.capacity() + buffer.capacity());
+        nuovoBuffer.put(this.buffer);
+        nuovoBuffer.put(buffer);
+        nuovoBuffer.flip();
+        this.buffer = nuovoBuffer;
     }
 
     @Override

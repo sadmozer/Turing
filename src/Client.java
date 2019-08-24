@@ -216,6 +216,14 @@ public class Client {
         switch (msgRisposta.getBuffer().getInt()) {
             case 200: {
                 System.out.println("Login eseguito con successo.");
+
+                while (msgRisposta.getBuffer().hasRemaining()) {
+                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
+                    msgRisposta.getBuffer().get(notifica);
+                    String msgNotifica = new String(notifica);
+                    System.out.println(msgNotifica);
+                }
+
                 statoClient.setUtenteLoggato(username);
                 statoClient.setStato(Stato.LOGGED);
             } break;
@@ -226,7 +234,12 @@ public class Client {
                 System.err.println("Password errata.");
             } break;
             case 203: {
-                System.err.printf("Sei gia' loggato come %s%nDevi prima eseguire il logout!", username);
+                if (statoClient.getStato().equals(Stato.LOGGED)) {
+                    System.err.printf("Sei gia' loggato come %s%nDevi prima eseguire il logout!%n", username);
+                }
+                else {
+                    System.err.printf("Utente %s gia' loggato su un altro host.%n", username);
+                }
             } break;
             default: {
                 System.err.println("Impossibile effettuare login. Riprova.");
@@ -288,19 +301,27 @@ public class Client {
             return;
         }
 
-        switch (msgRisposta.getBuffer().getInt()) {
-            case 200: {
-                System.out.println("Documento creato con successo.");
-            } break;
-            case 201: {
-                System.err.println("Documento gia' presente.");
-                return;
-            }
-            case 203:
-            case 204:
-            case 205: {
-                System.err.println("Impossibile creare documento. Riprova.");
-                return;
+        while (msgRisposta.getBuffer().hasRemaining()) {
+            switch (msgRisposta.getBuffer().getInt()) {
+                case 100: {
+                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
+                    msgRisposta.getBuffer().get(notifica);
+                    String msgNotifica = new String(notifica);
+                    System.out.println(msgNotifica);
+                } break;
+                case 200: {
+                    System.out.println("Documento creato con successo.");
+                } break;
+                case 201: {
+                    System.err.println("Documento gia' presente.");
+                    return;
+                }
+                case 203:
+                case 204:
+                case 205: {
+                    System.err.println("Impossibile creare documento. Riprova.");
+                    return;
+                }
             }
         }
 
@@ -340,24 +361,32 @@ public class Client {
             return;
         }
 
-        switch (msgRisposta.getBuffer().getInt()) {
-            case 203:
-            case 204:
-            case 205: {
-                System.err.println("Impossibile ricevere lista documenti. Riprova.");
-            } break;
-            case 201: {
-                System.err.println("Non hai alcun documento.");
-            } break;
-            case 200: {
-                System.out.println("Lista ricevuta con successo.");
-                ByteBuffer buf = msgRisposta.getBuffer();
-                int dimMsg = buf.getInt();
-                byte[] bytes = new byte[dimMsg];
-                msgRisposta.getBuffer().get(bytes);
-                String lista = new String(bytes);
-                System.out.printf(lista);
-            } break;
+        while (msgRisposta.getBuffer().hasRemaining()) {
+            switch (msgRisposta.getBuffer().getInt()) {
+                case 100: {
+                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
+                    msgRisposta.getBuffer().get(notifica);
+                    String msgNotifica = new String(notifica);
+                    System.out.println(msgNotifica);
+                } break;
+                case 203:
+                case 204:
+                case 205: {
+                    System.err.println("Impossibile ricevere lista documenti. Riprova.");
+                } break;
+                case 201: {
+                    System.err.println("Non hai alcun documento.");
+                } break;
+                case 200: {
+                    System.out.println("Lista ricevuta con successo.");
+                    ByteBuffer buf = msgRisposta.getBuffer();
+                    int dimMsg = buf.getInt();
+                    byte[] bytes = new byte[dimMsg];
+                    msgRisposta.getBuffer().get(bytes);
+                    String lista = new String(bytes);
+                    System.out.printf(lista);
+                } break;
+            }
         }
     }
 
@@ -380,16 +409,24 @@ public class Client {
             return;
         }
 
-        switch (msgRisposta.getBuffer().getInt()) {
-            case 203:
-            case 204:
-            case 205: {
-                System.err.println("Impossibile effettuare logout. Riprova.");
-            } break;
-            case 200: {
-                System.out.println("Logout eseguito con successo.");
-                statoClient.setUtenteLoggato("");
-                statoClient.setStato(Stato.STARTED);
+        while (msgRisposta.getBuffer().hasRemaining()) {
+            switch (msgRisposta.getBuffer().getInt()) {
+                case 100: {
+                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
+                    msgRisposta.getBuffer().get(notifica);
+                    String msgNotifica = new String(notifica);
+                    System.out.println(msgNotifica);
+                } break;
+                case 203:
+                case 204:
+                case 205: {
+                    System.err.println("Impossibile effettuare logout. Riprova.");
+                } break;
+                case 200: {
+                    System.out.println("Logout eseguito con successo.");
+                    statoClient.setUtenteLoggato("");
+                    statoClient.setStato(Stato.STARTED);
+                }
             }
         }
     }
