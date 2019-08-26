@@ -13,7 +13,6 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.sql.Time;
 import java.util.Scanner;
 
 public class Client {
@@ -27,8 +26,7 @@ public class Client {
     private static int minLungDocumento = 3;
     private static int maxLungDocumento = 20;
     private static int minNumSezioni = 1;
-    private static int maxNumSezioni = 50;
-    private static int NUM_TENTATIVI_RICONNESSIONE = 3;
+    private static int maxNumSezioni = 15;
     private static String DEFAULT_DOCS_DIRECTORY = System.getProperty("user.dir") + File.separator + "data_client";
 
     // Setup
@@ -96,6 +94,7 @@ public class Client {
         regex += "(turing\\sregister\\s([^\\s]+)\\s([^\\s]+)|";
         regex += "turing\\slogin\\s([^\\s]+)\\s([^\\s]+)|";
         regex += "turing\\screate\\s([^\\s]+)\\s([^\\s]+)|";
+        regex += "turing\\sshare\\s([^\\s]+)\\s([^\\s]+)|";
         regex += "turing\\slist|";
         regex += "turing\\slogout|";
         regex += "turing\\squit|";
@@ -182,8 +181,12 @@ public class Client {
     private static void opLogin(StatoClient statoClient, String username, String password) {
         SocketChannel socket = statoClient.getSocket();
 
-        // Controllo il formato di username e password
-        if (username.length() < minLungUsername) {
+        // Controllo il formato di username
+        if (!username.matches("^[a-zA-Z0-9]+$")) {
+            System.err.println("L'username deve contenere solo caratteri alfanumerici.");
+            return;
+        }
+        else if (username.length() < minLungUsername) {
             System.err.println("Username errato.");
             return;
         }
@@ -191,7 +194,13 @@ public class Client {
             System.err.println("Username errato.");
             return;
         }
-        if (password.length() < minLungPassword) {
+
+        // Controllo il formato di password
+        if (!password.matches("^[a-zA-Z0-9]+$")) {
+            System.err.println("Password errata.");
+            return;
+        }
+        else if (password.length() < minLungPassword) {
             System.err.println("Password errata.");
             return;
         }
@@ -199,6 +208,7 @@ public class Client {
             System.err.println("Password errata.");
             return;
         }
+
         Messaggio msgInvio = new Messaggio();
         msgInvio.setBuffer("login " + username + " " + password);
 
@@ -218,10 +228,13 @@ public class Client {
                 System.out.println("Login eseguito con successo.");
 
                 while (msgRisposta.getBuffer().hasRemaining()) {
+                    if (msgRisposta.getBuffer().getInt() == 100) {
+                        System.out.printf("[NUOVA NOTIFICA!]%n");
+                    }
                     byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
                     msgRisposta.getBuffer().get(notifica);
                     String msgNotifica = new String(notifica);
-                    System.out.println(msgNotifica);
+                    System.out.printf(msgNotifica);
                 }
 
                 statoClient.setUtenteLoggato(username);
@@ -304,10 +317,13 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
+                    if (msgRisposta.getBuffer().getInt() == 100) {
+                        System.out.printf("[NUOVA NOTIFICA!]%n");
+                    }
                     byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
                     msgRisposta.getBuffer().get(notifica);
                     String msgNotifica = new String(notifica);
-                    System.out.println(msgNotifica);
+                    System.out.printf(msgNotifica);
                 } break;
                 case 200: {
                     System.out.println("Documento creato con successo.");
@@ -340,9 +356,97 @@ public class Client {
     }
 
     private static void opShare(StatoClient statoClient, String doc, String username) {
+        SocketChannel socket = statoClient.getSocket();
+
+        // Controllo il formato di doc
+        boolean errore = false;
+        if (!doc.matches("^[a-zA-Z0-9]+$")) {
+            System.err.println("Nome documento errato.");
+            errore = true;
+        }
+        if (doc.length() < minLungDocumento) {
+            System.err.println("Nome documento errato.");
+            errore = true;
+        }
+        else if(doc.length() > maxLungDocumento) {
+            System.err.println("Nome documento errato.");
+            errore = true;
+        }
+
+        // Controllo il formato di username
+        if (!username.matches("^[a-zA-Z0-9]+$")) {
+            System.err.println("L'username deve contenere solo caratteri alfanumerici.");
+            errore = true;
+        }
+        else if (username.length() < minLungUsername) {
+            System.err.println("Username errato.");
+            errore = true;
+        }
+        else if (username.length() > maxLungUsername) {
+            System.err.println("Username errato.");
+            errore = true;
+        }
+
+        if (errore) {
+            return;
+        }
+
+        Messaggio msgInvio = new Messaggio();
+        msgInvio.setBuffer("share " + doc + " " + username);
+
+        if(Connessione.inviaDati(socket, msgInvio) == -1) {
+            System.err.println("Impossibile effettuare login. Riprova.");
+            return;
+        }
+
+        Messaggio msgRisposta = new Messaggio();
+        if((Connessione.riceviDati(socket, msgRisposta)) == -1) {
+            System.err.println("Impossibile effettuare login. Riprova.");
+            return;
+        }
+
+        while (msgRisposta.getBuffer().hasRemaining()) {
+            switch (msgRisposta.getBuffer().getInt()) {
+                case 100: {
+                    if (msgRisposta.getBuffer().getInt() == 100) {
+                        System.out.printf("[NUOVA NOTIFICA!]%n");
+                    }
+                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
+                    msgRisposta.getBuffer().get(notifica);
+                    String msgNotifica = new String(notifica);
+                    System.out.printf(msgNotifica);
+                } break;
+                case 203: {
+                    System.err.println("Impossibile condividere documento.");
+                } break;
+                case 206: {
+                    System.err.println("Non puoi autoinvitarti.");
+                } break;
+                case 205: {
+                    System.err.println("L'utente invitato non risulta registrato.");
+                } break;
+                case 207: {
+                    System.err.printf("Non possiedi alcun documento chiamato %s.%n", doc);
+                } break;
+                case 208: {
+                    System.err.println("L'utente invitato e' gia' un collaboratore.");
+                } break;
+                case 209: {
+                    System.err.println("L'utente invitato possiede un documento con lo stesso nome del tuo.");
+                } break;
+                case 200: {
+                    System.out.printf("Documento condiviso con successo.%nVerra' inviato un invito a %s.%n", username);
+                } break;
+            }
+        }
     }
 
-    private static void opShow(StatoClient statoClient, String doc) {
+    private static void opShow1(StatoClient statoClient, String doc, String numSez) {
+
+    }
+
+    private static void opShow2(StatoClient statoClient, String doc) {
+
     }
 
     private static void opList(StatoClient statoClient) {
@@ -364,10 +468,13 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
+                    if (msgRisposta.getBuffer().getInt() == 100) {
+                        System.out.printf("[NUOVA NOTIFICA!]%n");
+                    }
                     byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
                     msgRisposta.getBuffer().get(notifica);
                     String msgNotifica = new String(notifica);
-                    System.out.println(msgNotifica);
+                    System.out.printf(msgNotifica);
                 } break;
                 case 203:
                 case 204:
@@ -475,7 +582,12 @@ public class Client {
                 opShare(statoClient, comandi[2], comandi[3]);
             } break;
             case "show": {
-                opShow(statoClient, comandi[2]);
+                if (comandi.length == 4) {
+                    opShow1(statoClient, comandi[2], comandi[3]);
+                }
+                else {
+                    opShow2(statoClient, comandi[2]);
+                }
             } break;
             case "list": {
                 opList(statoClient);

@@ -36,7 +36,7 @@ public class GestoreSessioni {
     }
 
     public Messaggio popNotifica(Utente utente) {
-        return notifichePerUtente.get(utente).get(0);
+        return notifichePerUtente.get(utente).remove(0);
     }
     public void addNotifica(Messaggio notificaDaAggiungere, Utente utente) {
         if (notifichePerUtente.get(utente) == null) {

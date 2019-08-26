@@ -28,10 +28,10 @@ public class Messaggio {
         return this.buffer.capacity();
     }
 
-    void appendBuffer(ByteBuffer buffer) {
-        ByteBuffer nuovoBuffer = ByteBuffer.allocate(this.buffer.capacity() + buffer.capacity());
+    void appendBuffer(ByteBuffer buf) {
+        ByteBuffer nuovoBuffer = ByteBuffer.allocate(this.buffer.capacity() + buf.capacity());
         nuovoBuffer.put(this.buffer);
-        nuovoBuffer.put(buffer);
+        nuovoBuffer.put(buf);
         nuovoBuffer.flip();
         this.buffer = nuovoBuffer;
     }

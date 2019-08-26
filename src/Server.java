@@ -130,7 +130,7 @@ public class Server {
                 if (key.isValid() && key.isAcceptable()) {
                     // Si apre un socket per comunicare con il client che ha fatto richiesta
                     ServerSocketChannel server = (ServerSocketChannel) key.channel();
-                    SocketChannel client = null;
+                    SocketChannel client;
                     SocketAddress clientAddress = null;
                     try {
                         client = server.accept();
@@ -152,6 +152,11 @@ public class Server {
 
                     if((Connessione.riceviDati(client, msgRicevuto)) == -1) {
                         System.err.println("[SERVER-ERROR]: Errore riceviDati. Chiudo la connessione.");
+                        if ((allegato = (Allegato) key.attachment()) != null) {
+                            if (gestoreSessioni.isLoggato(allegato.getUtente().getUsername())) {
+                                gestoreSessioni.logout(allegato.getUtente().getUsername());
+                            }
+                        }
                         key.cancel();
                     }
                     else {
@@ -162,7 +167,7 @@ public class Server {
                             case "login": {
                                 String username = comandi[1];
                                 String password = comandi[2];
-                                Utente utente = null;
+                                Utente utente;
                                 allegato = new Allegato();
                                 allegato.setMessaggio(msgRisposta);
 
@@ -199,7 +204,7 @@ public class Server {
                             } break;
                             case "logout": {
                                 Utente utente = null;
-                                String username = null;
+                                String username;
 
                                 if ((allegato = (Allegato) key.attachment()) == null) {
                                     System.err.println("[SERVER-ERROR]: Errore utente sconosciuto0.");
@@ -231,10 +236,17 @@ public class Server {
                                     allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(200);
                                 }
+
+                                // Aggiungo le notifiche alla risposta
+                                if (utente != null) {
+                                    while (gestoreSessioni.haNotifiche(utente)) {
+                                        msgRisposta.appendBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
+                                    }
+                                }
                             } break;
                             case "create": {
                                 Utente utente = null;
-                                String username = "";
+                                String username;
                                 String nomeDoc = comandi[1];
                                 int numSezioni = Integer.parseInt(comandi[2]);
 
@@ -278,11 +290,16 @@ public class Server {
                                     allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(200);
                                 }
+                                if (utente != null) {
+                                    while (gestoreSessioni.haNotifiche(utente)) {
+                                        msgRisposta.appendBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
+                                    }
+                                }
                             } break;
                             case "list": {
                                 Utente utente = null;
-                                String username = "";
-                                String listaDoc = "";
+                                String username;
+                                String listaDoc;
                                 if ((allegato = (Allegato) key.attachment()) == null) {
                                     System.err.println("[SERVER-ERROR]: Errore utente sconosciuto0.");
                                     allegato = new Allegato();
@@ -318,10 +335,15 @@ public class Server {
                                     buf.flip();
                                     msgRisposta.setBuffer(buf);
                                 }
+                                if (utente != null) {
+                                    while (gestoreSessioni.haNotifiche(utente)) {
+                                        msgRisposta.appendBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
+                                    }
+                                }
                             } break;
                             case "share": {
-                                Utente utente = allegato.getUtente();
-                                String username = null;
+                                Utente utente = null;
+                                String username;
                                 String nomeDoc = comandi[1];
                                 String usernameInvitato = comandi[2];
 
@@ -348,7 +370,7 @@ public class Server {
                                 else if (!gestoreSessioni.isLoggato(username)) {
                                     System.err.printf("[SERVER-ERROR]: Errore utente %s non loggato.%n", username);
                                     allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(204);
+                                    msgRisposta.setBuffer(203);
                                 }
                                 else if (!registratore.isRegistrato(usernameInvitato)) {
                                     System.err.printf("[SERVER-ERROR]: Errore utenteInvitato %s non registrato.%n", usernameInvitato);
@@ -356,43 +378,48 @@ public class Server {
                                     msgRisposta.setBuffer(205);
                                 }
                                 else if (!gestoreDocumenti.haDocumento(nomeDoc, utente)) {
-                                    System.err.printf("[SERVER-ERROR]: Non esiste documento.%n", usernameInvitato);
+                                    System.err.println("[SERVER-ERROR]: Non esiste documento.");
                                     allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(207);
                                 }
-                                else if (gestoreDocumenti.isCollaboratore(registratore.getUtente(usernameInvitato), nomeDoc, utente)) {
+                                else if (gestoreDocumenti.haDocumento(nomeDoc, registratore.getUtente(usernameInvitato))) {
+                                    System.err.println("[SERVER-ERROR]: Documento con stesso nome.");
+                                    allegato.setMessaggio(msgRisposta);
+                                    msgRisposta.setBuffer(209);
+                                }
+                                else if (gestoreDocumenti.isCollaboratore(usernameInvitato, nomeDoc, utente)) {
                                     System.err.println("[SERVER-ERROR]: Utente gia' collaboratore.");
                                     allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(208);
                                 }
+                                else if (!gestoreDocumenti.condividiDocumento(nomeDoc, utente, registratore.getUtente(usernameInvitato))) {
+                                    System.err.println("[SERVER-ERROR]: Errore condivisione documento");
+                                    allegato.setMessaggio(msgRisposta);
+                                    msgRisposta.setBuffer(203);
+                                }
                                 else {
-                                    ByteBuffer codNotifica = ByteBuffer.allocate(Integer.BYTES);
-                                    codNotifica.putInt(100);
-                                    codNotifica.flip();
-
-                                    String invitoCollab = utente.getUsername() + " ti ha invitato a collaborare ad un suo documento!%n Ora puoi accedere e modificare il documento " + nomeDoc + ".";
-                                    ByteBuffer dimInvito = ByteBuffer.allocate(Integer.BYTES);
-                                    dimInvito.putInt(invitoCollab.getBytes().length);
-                                    dimInvito.flip();
-                                    ByteBuffer bufInvito = ByteBuffer.allocate(invitoCollab.getBytes().length);
-                                    bufInvito.put(invitoCollab.getBytes());
-                                    bufInvito.flip();
+                                    String invitoCollab = "  " + utente.getUsername() + " ti ha invitato a collaborare ad un suo documento!%n  Ora puoi accedere e modificare il documento " + nomeDoc + ".%n";
+                                    ByteBuffer bufferNotifica = ByteBuffer.allocate(2*Integer.BYTES + invitoCollab.getBytes().length);
+                                    bufferNotifica.putInt(100);
+                                    bufferNotifica.putInt(invitoCollab.getBytes().length);
+                                    bufferNotifica.put(invitoCollab.getBytes());
+                                    bufferNotifica.flip();
 
                                     Messaggio invito = new Messaggio();
-                                    invito.setBuffer(codNotifica);
-                                    invito.appendBuffer(dimInvito);
-                                    invito.appendBuffer(bufInvito);
-
-                                    if (gestoreSessioni.isLoggato(usernameInvitato)) {
-                                        msgRisposta.appendBuffer(invito.getBuffer());
-                                    }
-                                    else {
-                                        gestoreSessioni.addNotifica(invito, registratore.getUtente(usernameInvitato));
-                                    }
+                                    invito.setBuffer(bufferNotifica);
+                                    gestoreSessioni.addNotifica(invito, registratore.getUtente(usernameInvitato));
 
                                     allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(210);
+                                    msgRisposta.setBuffer(200);
                                 }
+                                if (utente != null) {
+                                    while (gestoreSessioni.haNotifiche(utente)) {
+                                        msgRisposta.appendBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
+                                    }
+                                }
+                            } break;
+                            case "show": {
+
                             } break;
                         }
 
