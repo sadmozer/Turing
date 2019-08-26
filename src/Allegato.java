@@ -1,16 +1,13 @@
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.nio.file.Path;
+import java.util.LinkedList;
 
 public class Allegato {
     private Messaggio messaggio = null;
     private Utente utente = null;
-
-    public Allegato(Messaggio messaggio, Utente utente, boolean utenteSconosciuto) {
-        this.messaggio = messaggio;
-        this.utente = utente;
-    }
+    private LinkedList<Path> fileDaInviare = null;
 
     public Allegato() {
+        this.fileDaInviare = new LinkedList<>();
     }
 
     public Utente getUtente() {
@@ -29,5 +26,14 @@ public class Allegato {
         this.messaggio = messaggio;
     }
 
+    public boolean haFileDaInviare() {
+        return !fileDaInviare.isEmpty();
+    }
+    public void pushFileDaInviare(Path pathFile) {
+        fileDaInviare.push(pathFile);
+    }
 
+    public Path popFileDaInviare() {
+        return fileDaInviare.pop();
+    }
 }

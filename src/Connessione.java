@@ -1,7 +1,13 @@
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 
 public class Connessione {
@@ -82,4 +88,35 @@ public class Connessione {
         }
     }
 
+    public static boolean inviaFile(SocketChannel socket, Path pathFile) {
+        FileChannel fileChannel;
+        long dimFile;
+
+        try {
+            FileInputStream fileInputStream = new FileInputStream(pathFile.toString());
+            fileChannel = fileInputStream.getChannel();
+            dimFile = fileChannel.size();
+            fileChannel.transferTo(0, dimFile, socket);
+            fileChannel.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean riceviFile(SocketChannel socket, Long dimFile, Path pathFile) {
+        FileChannel fileChannel;
+
+        try {
+            FileOutputStream fileOutputStream = new FileOutputStream(pathFile.toString());
+            fileChannel = fileOutputStream.getChannel();
+            fileChannel.transferFrom(socket, 0, dimFile);
+            fileChannel.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
 }

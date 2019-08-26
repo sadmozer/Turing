@@ -96,6 +96,7 @@ public class Client {
         regex += "turing\\screate\\s([^\\s]+)\\s([^\\s]+)|";
         regex += "turing\\sshare\\s([^\\s]+)\\s([^\\s]+)|";
         regex += "turing\\slist|";
+        regex += "turing\\sedit\\s([^\\s]+)\\s([^\\s]+)|";
         regex += "turing\\slogout|";
         regex += "turing\\squit|";
         regex += "turing\\s--help)";
@@ -284,12 +285,12 @@ public class Client {
         // Controllo il formato di numSezioni
         try {
             numSez = Integer.parseInt(numSezioni);
-            if (numSez <= minNumSezioni) {
-                System.err.printf("Il numero di sezioni deve essere maggiore di %d.%n", minNumSezioni);
+            if (numSez < minNumSezioni) {
+                System.err.printf("Il numero di sezioni deve essere un intero compreso tra %d e %d.%n", minNumSezioni, maxNumSezioni);
                 errore = true;
             }
             else if (numSez > maxNumSezioni) {
-                System.err.printf("Il numero di sezioni deve essere minore di %d.%n", maxNumSezioni);
+                System.err.printf("Il numero di sezioni deve essere un intero compreso tra %d e %d.%n", minNumSezioni, maxNumSezioni);
                 errore = true;
             }
         } catch (NumberFormatException e) {
@@ -326,7 +327,25 @@ public class Client {
                     System.out.printf(msgNotifica);
                 } break;
                 case 200: {
+                    String pathDocumento = DEFAULT_DOCS_DIRECTORY + File.separator + username + File.separator + doc;
+
+                    try {
+                        if (Files.notExists(Paths.get(pathDocumento))) {
+                            Files.createDirectory(Paths.get(pathDocumento));
+                        }
+                        for (int i = 1; i <= numSez; i++) {
+                            if (Files.notExists(Paths.get( pathDocumento + File.separator + doc + "_" + i + ".txt"))) {
+                                Files.createFile(Paths.get( pathDocumento + File.separator + doc + "_" + i + ".txt"));
+                            }
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        System.err.println("Impossibile creare documento. Riprova.");
+                        return;
+                    }
+
                     System.out.println("Documento creato con successo.");
+
                 } break;
                 case 201: {
                     System.err.println("Documento gia' presente.");
@@ -434,6 +453,9 @@ public class Client {
                 case 209: {
                     System.err.println("L'utente invitato possiede un documento con lo stesso nome del tuo.");
                 } break;
+                case 210: {
+                    System.err.printf("Non hai i permessi per condividere il documento.%nSolo il creatore puo' condividerlo.%n");
+                } break;
                 case 200: {
                     System.out.printf("Documento condiviso con successo.%nVerra' inviato un invito a %s.%n", username);
                 } break;
@@ -497,7 +519,115 @@ public class Client {
         }
     }
 
-    private static void opEdit(StatoClient statoClient, String doc, String sec) {
+    private static void opEdit(StatoClient statoClient, String doc, String numSezione) {
+        SocketChannel socket = statoClient.getSocket();
+
+        // Controllo il formato di doc
+        boolean errore = false;
+        if (!doc.matches("^[a-zA-Z0-9]+$")) {
+            System.err.println("Nome documento errato.");
+            errore = true;
+        }
+        if (doc.length() < minLungDocumento) {
+            System.err.println("Nome documento errato.");
+            errore = true;
+        }
+        else if(doc.length() > maxLungDocumento) {
+            System.err.println("Nome documento errato.");
+            errore = true;
+        }
+
+        // Controllo il formato di numSez
+        int numSez;
+        try {
+            numSez = Integer.parseInt(numSezione);
+            if (numSez < minNumSezioni) {
+                System.err.printf("Il numero di sezioni deve essere un intero compreso tra %d e %d.%n", minNumSezioni, maxNumSezioni);
+                errore = true;
+            }
+            else if (numSez > maxNumSezioni) {
+                System.err.printf("Il numero di sezioni deve essere un intero compreso tra %d e %d.%n", minNumSezioni, maxNumSezioni);
+                errore = true;
+            }
+        } catch (NumberFormatException e) {
+            System.err.printf("Il numero di sezioni deve essere un intero compreso tra %d e %d.%n", minNumSezioni, maxNumSezioni);
+            errore = true;
+        }
+
+        if (errore) {
+            return;
+        }
+
+        Path pathFile = Paths.get(DEFAULT_DOCS_DIRECTORY + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
+        try {
+            if (!Files.exists(pathFile)) {
+                Files.createFile(pathFile);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        Messaggio msgInvio = new Messaggio();
+        Messaggio msgRisposta = new Messaggio();
+        msgInvio.setBuffer("edit " + doc + " " + numSezione);
+        if (Connessione.inviaDati(socket, msgInvio) == -1) {
+            System.err.println("Impossibile editare documento. Riprova.");
+            return;
+        }
+
+        if (Connessione.riceviDati(socket, msgRisposta) == -1) {
+            System.err.println("Impossibile editare documento. Riprova.");
+            return;
+        }
+
+        while (msgRisposta.getBuffer().hasRemaining()) {
+            switch (msgRisposta.getBuffer().getInt()) {
+                case 100: {
+                    if (msgRisposta.getBuffer().getInt() == 100) {
+                        System.out.printf("[NUOVA NOTIFICA!]%n");
+                    }
+                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
+                    msgRisposta.getBuffer().get(notifica);
+                    String msgNotifica = new String(notifica);
+                    System.out.printf(msgNotifica);
+                } break;
+                case 200: {
+                    long dimSezione = msgRisposta.getBuffer().getLong();
+
+                    if (!Connessione.riceviFile(socket, dimSezione, pathFile)) {
+                        System.err.println("Errore riceviFile.");
+                        return;
+                    }
+                    System.out.printf("Inizio editing del documento %s.%n", doc);
+                    statoClient.setStato(Stato.EDIT);
+                } break;
+                case 201:
+                case 203: {
+                    System.err.println("Impossibile iniziare editing documento. Riprova.");
+                } break;
+                case 204: {
+                    System.err.printf("Non possiedi alcun documento chiamato %s.%n", doc);
+                } break;
+                case 205: {
+                    System.err.printf("Stai gia' modificando il documento %s.%n", doc);
+                } break;
+                case 206: {
+                    System.err.println("Numero di sezione errato.");
+                } break;
+            }
+        }
+    }
+
+    private static void opEndEdit(StatoClient statoClient, String doc, String numSez) {
+
+    }
+
+    private static void opSend(StatoClient statoClient, String msg) {
+
+    }
+
+    private static void opReceive(StatoClient statoClient) {
+
     }
 
     private static void opLogout(StatoClient statoClient) {
@@ -618,6 +748,30 @@ public class Client {
     }
 
     private static void statoEdit(String[] comandi, StatoClient statoClient) {
+        statoClient.setStato(Stato.EDIT);
+        switch (comandi[1]) {
+            case "end-edit": {
+                opEndEdit(statoClient, comandi[2], comandi[3]);
+            } break;
+            case "send": {
+                opSend(statoClient, comandi[2]);
+            } break;
+            case "receive": {
+                opReceive(statoClient);
+            } break;
+            case "register":
+            case "login":
+            case "create":
+            case "share":
+            case "show":
+            case "list":
+            case "edit": {
+                System.err.printf("Non puoi eseguire il comando in modalità editing.%nEsegui prima il comando end-edit.%n");
+            } break;
+            default: {
+
+            } break;
+        }
     }
 
     public static void main (String[] args) {
@@ -670,54 +824,37 @@ public class Client {
         // Rimango in ascolto dei comandi utente in input
         Scanner inputUtente = new Scanner(System.in);
         String regex = costruisciRegex();
-        String comandi[] = null;
+        String[] comandi = null;
         String currInput = "";
-        boolean quit = false;
         StatoClient statoClient = new StatoClient(registratoreRemoto, socket, Stato.STARTED);
 
         // Ciclo principale
         while (!(statoClient.getStato() == Stato.QUIT)) {
-            switch (statoClient.getStato()) {
-                case STARTED: {
-                    if (!statoClient.getUtenteLoggato().equals("")) {
-                        System.out.printf("[%s]$ ", statoClient.getUtenteLoggato());
-                    }
-                    else {
-                        System.out.printf("$ ");
-                    }
-                    currInput = inputUtente.nextLine();
-                    comandi = currInput.split("\\s+");
-
-                    if(!sintassiInputCorretta(currInput, regex)) {
-                        System.err.println("Comando errato.");
-                        System.out.println("Per vedere i comandi disponibili usa: turing --help");
-                    }
-                    else {
-                        statoStarted(comandi, statoClient);
-                    }
-                } break;
-                case LOGGED: {
-                    if (!statoClient.getUtenteLoggato().equals("")) {
-                        System.out.printf("[%s]$ ", statoClient.getUtenteLoggato());
-                    }
-                    else {
-                        System.out.printf("$ ");
-                    }
-                    currInput = inputUtente.nextLine();
-                    comandi = currInput.split("\\s+");
-
-                    if(!sintassiInputCorretta(currInput, regex)) {
-                        System.err.println("Comando errato.");
-                        System.out.println("Per vedere i comandi disponibili usa: turing --help");
-                    }
-                    else {
-                        statoLogged(comandi, statoClient);
-                    }
-                } break;
-                case EDIT: {
-                } break;
+            if (!statoClient.getUtenteLoggato().equals("")) {
+                System.out.printf("[%s]$ ", statoClient.getUtenteLoggato());
             }
-
+            else {
+                System.out.printf("$ ");
+            }
+            currInput = inputUtente.nextLine();
+            comandi = currInput.split("\\s+");
+            if(!sintassiInputCorretta(currInput, regex)) {
+                System.err.println("Comando errato.");
+                System.out.println("Per vedere i comandi disponibili usa: turing --help");
+            }
+            else {
+                switch (statoClient.getStato()) {
+                    case STARTED: {
+                        statoStarted(comandi, statoClient);
+                    } break;
+                    case LOGGED: {
+                        statoLogged(comandi, statoClient);
+                    } break;
+                    case EDIT: {
+                        statoEdit(comandi, statoClient);
+                    } break;
+                }
+            }
         }
         inputUtente.close();
         try {

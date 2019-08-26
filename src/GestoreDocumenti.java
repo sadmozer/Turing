@@ -1,5 +1,8 @@
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -8,6 +11,7 @@ import java.util.*;
 public class GestoreDocumenti {
     private HashMap<Utente, HashMap<String, Documento>> documentiPerUtente = new HashMap<>();
     private HashMap<Documento, HashSet<String>> collaboratoriPerDocumento = new HashMap<>();
+    private HashMap<Documento, Utente[]> attiviPerDocumento= new HashMap<>();
     private String pathMainDirectory = "";
 
     public GestoreDocumenti(String pathMainDirectory) {
@@ -41,6 +45,18 @@ public class GestoreDocumenti {
         return hasmapDoc.get(nomeDoc) != null;
     }
 
+    public int getNumSezioni(String nomeDoc, Utente utente) {
+        HashMap<String, Documento> mappaDocumenti;
+        if ((mappaDocumenti = documentiPerUtente.get(utente)) == null) {
+            return -1;
+        }
+        return mappaDocumenti.get(nomeDoc).getNumSezioni();
+    }
+
+    public String getPathSezione(String nomeDoc, int numSezione, Utente utente) {
+        return documentiPerUtente.get(utente).get(nomeDoc).getPathFile() + File.separator + nomeDoc + "_" + numSezione + ".txt";
+    }
+
     public boolean isCollaboratore(String usernameInvitato, String nomeDoc, Utente utenteCreatore) {
         Documento doc;
         if((doc = documentiPerUtente.get(utenteCreatore).get(nomeDoc)) == null) {
@@ -54,29 +70,49 @@ public class GestoreDocumenti {
         return listaCol.contains(usernameInvitato);
     }
 
+    public boolean isCreatore(String nomeDoc, Utente utente) {
+        return documentiPerUtente.get(utente).get(nomeDoc).getCreatore().getUsername().equals(utente.getUsername());
+    }
+
     public boolean creaDocumento(String nomeDoc, Utente utenteCreatore, int numSezioni) {
         // Creo nuovo documento
         Documento nuovoDocumento = new Documento(nomeDoc, utenteCreatore, numSezioni);
 
         // Prendo la hashmap dei documenti di utenteCreatore
-        HashMap<String, Documento> mappaDocumenti = documentiPerUtente.get(utenteCreatore);
+        HashMap<String, Documento> mappaDocumenti;
 
-        if (mappaDocumenti == null) {
+        if ((mappaDocumenti = documentiPerUtente.get(utenteCreatore)) == null) {
             documentiPerUtente.put(utenteCreatore, new HashMap<>());
+            mappaDocumenti = documentiPerUtente.get(utenteCreatore);
         }
 
-        Path pathFile = Paths.get(pathMainDirectory + File.separator + utenteCreatore.getUsername() + File.separator + nomeDoc);
+        String stringPathFile = pathMainDirectory + File.separator + utenteCreatore.getUsername() + File.separator + nomeDoc;
+        nuovoDocumento.setPathFile(stringPathFile);
+
+        Path pathFile = Paths.get(stringPathFile);
         try {
-            if (!Files.exists(pathFile)) {
-                Files.createDirectory(pathFile);
+            if (Files.exists(pathFile)) {
+                return false;
+            }
+            else if (mappaDocumenti.putIfAbsent(nomeDoc, nuovoDocumento) != null) {
+                return false;
+            }
+
+            if (attiviPerDocumento.get(nuovoDocumento) == null) {
+                attiviPerDocumento.put(nuovoDocumento, new Utente[numSezioni]);
+            }
+
+            Files.createDirectory(pathFile);
+            for (int i = 1; i <= numSezioni; i++) {
+                Path pathSezione = Paths.get(stringPathFile + File.separator + nomeDoc + "_" + i + ".txt");
+                Files.createFile(pathSezione);
             }
         } catch (IOException e) {
             e.printStackTrace();
             return false;
         }
 
-        // Inserisco il nuovo documento nella hashmap
-        return (documentiPerUtente.get(utenteCreatore).putIfAbsent(nomeDoc, nuovoDocumento) == null);
+        return true;
     }
 
     public boolean condividiDocumento(String nomeDoc, Utente utenteCreatore, Utente utenteInvitato) {
@@ -133,5 +169,74 @@ public class GestoreDocumenti {
             return null;
         }
         return ret;
+    }
+
+    public boolean isEditing(String nomeDoc, int numSez, Utente utente) {
+        HashMap<String, Documento> mappaDocumenti;
+        if ((mappaDocumenti = documentiPerUtente.get(utente)) == null) {
+            return false;
+        }
+
+        Documento doc;
+        if ((doc = mappaDocumenti.get(nomeDoc)) == null) {
+            return false;
+        }
+
+        Utente[] utentiAttivi;
+        if ((utentiAttivi = attiviPerDocumento.get(doc)) == null) {
+            return false;
+        }
+
+        Utente attivo;
+        if ((attivo = utentiAttivi[numSez]) == null) {
+            return false;
+        }
+
+        return utente.equals(attivo);
+    }
+
+    public boolean inizioEditing(String nomeDoc, int numSez, Utente utente) {
+        Documento doc;
+        if ((doc = documentiPerUtente.get(utente).get(nomeDoc)) == null) {
+            return false;
+        }
+
+        try {
+            attiviPerDocumento.get(doc)[numSez] = utente;
+        } catch (IndexOutOfBoundsException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    public boolean fineEditing(String nomeDoc, int numSez, Utente utente) {
+        Documento doc;
+        if ((doc = documentiPerUtente.get(utente).get(nomeDoc)) == null) {
+            return false;
+        }
+
+        try {
+            attiviPerDocumento.get(doc)[numSez] = null;
+        } catch (IndexOutOfBoundsException e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        return true;
+    }
+
+    public long getDimSezione(String nomeDoc, int numSez, Utente utente) {
+        String stringPathSezione = documentiPerUtente.get(utente).get(nomeDoc).getPathFile() + File.separator + nomeDoc + "_" + numSez + ".txt";
+        Path pathFile = Paths.get(stringPathSezione);
+        long dimSezione;
+        try {
+            dimSezione = Files.size(pathFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return -1;
+        }
+        return dimSezione;
+
     }
 }

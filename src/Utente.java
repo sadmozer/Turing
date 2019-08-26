@@ -28,4 +28,17 @@ public class Utente {
     public String toString() {
         return "username: " + username + "\npassword: " + password;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        else if (!(obj instanceof Utente)) {
+            return false;
+        }
+        else {
+            return this.username.equals(((Utente) obj).getUsername());
+        }
+    }
 }

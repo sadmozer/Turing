@@ -4,7 +4,7 @@ public class Documento {
     private Utente creatore;
     private int numSezioni;
     private String nomeDocumento;
-    private Sezione[] sezioni;
+    private String pathFile;
 
     public Documento(String nomeDocumento, Utente creatore, int numSezioni) {
         this.nomeDocumento = nomeDocumento;
@@ -24,15 +24,19 @@ public class Documento {
         return numSezioni;
     }
 
-    public void setNumSezioni(int numSezioni) {
-        this.numSezioni = numSezioni;
-    }
-
     public String getNomeDocumento() {
         return nomeDocumento;
     }
 
     public void setNomeDocumento(String nomeDocumento) {
         this.nomeDocumento = nomeDocumento;
+    }
+
+    public String getPathFile() {
+        return pathFile;
+    }
+
+    public void setPathFile(String pathFile) {
+        this.pathFile = pathFile;
     }
 }
