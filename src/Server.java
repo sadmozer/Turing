@@ -178,7 +178,6 @@ public class Server {
                                 }
                                 else if (!registratore.getUtente(username).getPassword().equals(password)){
                                     msgRisposta.setBuffer(202);
-                                    allegato.setUtente(utente);
                                     System.err.println("[SERVER-ERROR]: Password errata.");
                                 }
                                 else if (gestoreSessioni.isLoggato(username)) {
@@ -188,7 +187,6 @@ public class Server {
                                 }
                                 else if (!gestoreSessioni.login(username, registratore.getUtente(username))){
                                     msgRisposta.setBuffer(199);
-                                    allegato.setUtente(utente);
                                     System.err.printf("[SERVER-ERROR]: Errore login %s%n.", utente.getUsername());
                                 }
                                 else {
@@ -196,9 +194,6 @@ public class Server {
                                         System.out.println("[SERVER]: Allegato gia' presente.");
                                     }
                                     msgRisposta.setBuffer(200);
-//                                    while (gestoreSessioni.haNotifiche(utente)) {
-//                                        msgRisposta.appendBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
-//                                    }
                                     allegato.setUtente(utente);
                                     System.out.printf("[SERVER]: Login %s effettuato.%n", utente.getUsername());
                                 }
@@ -237,13 +232,6 @@ public class Server {
                                     allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(200);
                                 }
-
-                                // Aggiungo le notifiche alla risposta
-//                                if (utente != null) {
-//                                    while (gestoreSessioni.haNotifiche(utente)) {
-//                                        msgRisposta.appendBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
-//                                    }
-//                                }
                             } break;
                             case "create": {
                                 Utente utente = null;
@@ -291,11 +279,6 @@ public class Server {
                                     allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(200);
                                 }
-//                                if (utente != null) {
-//                                    while (gestoreSessioni.haNotifiche(utente)) {
-//                                        msgRisposta.appendBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
-//                                    }
-//                                }
                             } break;
                             case "list": {
                                 Utente utente = null;
@@ -336,11 +319,6 @@ public class Server {
                                     buf.flip();
                                     msgRisposta.setBuffer(buf);
                                 }
-//                                if (utente != null) {
-//                                    while (gestoreSessioni.haNotifiche(utente)) {
-//                                        msgRisposta.appendBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
-//                                    }
-//                                }
                             } break;
                             case "share": {
                                 Utente utente = null;
@@ -383,7 +361,7 @@ public class Server {
                                     allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(207);
                                 }
-                                else if (gestoreDocumenti.isCreatore(nomeDoc, utente)) {
+                                else if (!gestoreDocumenti.isCreatore(nomeDoc, utente)) {
                                     System.err.println("[SERVER-ERROR]: Utente non creatore non puo' invitare.");
                                     allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(210);
@@ -404,11 +382,13 @@ public class Server {
                                     msgRisposta.setBuffer(203);
                                 }
                                 else {
-                                    String invitoCollab = "  " + utente.getUsername() + " ti ha invitato a collaborare ad un suo documento!%n  Ora puoi accedere e modificare il documento " + nomeDoc + ".%n";
-                                    ByteBuffer bufferNotifica = ByteBuffer.allocate(2*Integer.BYTES + invitoCollab.getBytes().length);
+                                    ByteBuffer bufferNotifica = ByteBuffer.allocate(4*Integer.BYTES + utente.getUsername().getBytes().length + nomeDoc.getBytes().length);
                                     bufferNotifica.putInt(100);
-                                    bufferNotifica.putInt(invitoCollab.getBytes().length);
-                                    bufferNotifica.put(invitoCollab.getBytes());
+                                    bufferNotifica.putInt(utente.getUsername().getBytes().length);
+                                    bufferNotifica.put(utente.getUsername().getBytes());
+                                    bufferNotifica.putInt(nomeDoc.getBytes().length);
+                                    bufferNotifica.put(nomeDoc.getBytes());
+                                    bufferNotifica.putInt(gestoreDocumenti.getNumSezioni(nomeDoc, utente));
                                     bufferNotifica.flip();
 
                                     Messaggio invito = new Messaggio();
@@ -418,17 +398,13 @@ public class Server {
                                     allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(200);
                                 }
-//                                if (utente != null) {
-//                                    while (gestoreSessioni.haNotifiche(utente)) {
-//                                        msgRisposta.appendBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
-//                                    }
-//                                }
                             } break;
                             case "show": {
 
                             } break;
                             case "edit": {
                                 Utente utente = null;
+                                Utente occupante = null;
                                 String username;
                                 String nomeDoc = comandi[1];
                                 int numSezione = Integer.parseInt(comandi[2]);
@@ -458,7 +434,19 @@ public class Server {
                                     allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(204);
                                 }
-                                else if (gestoreDocumenti.isEditing(nomeDoc, numSezione, utente)) {
+                                else if ((occupante = gestoreDocumenti.isEditing(nomeDoc, numSezione, utente)) != null && !occupante.equals(utente)) {
+                                    System.err.printf("[SERVER-ERROR]: %s sta occupando documento %d .%n", occupante.getUsername(), occupante.getUsername().getBytes().length);
+                                    allegato.setMessaggio(msgRisposta);
+                                    msgRisposta.setBuffer(207);
+
+                                    ByteBuffer dimBuf = ByteBuffer.allocate(Integer.BYTES);
+                                    dimBuf.putInt(occupante.getUsername().getBytes().length);
+                                    dimBuf.flip();
+                                    msgRisposta.appendBuffer(dimBuf);
+
+                                    msgRisposta.appendBuffer(ByteBuffer.wrap(occupante.getUsername().getBytes()));
+                                }
+                                else if (occupante!= null && occupante.equals(utente)) {
                                     System.err.println("[SERVER-ERROR]: Utente sta gia' modificando documento.%n");
                                     allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(205);
@@ -506,24 +494,26 @@ public class Server {
                         System.err.println("[SERVER-ERROR]: Allegato vuoto. Chiudo la connessione.");
                         key.cancel();
                     }
-                    else if(Connessione.inviaDati(client, allegato.getMessaggio()) == -1) {
+                    else if ((utente = allegato.getUtente()) != null){
+                        while (gestoreSessioni.haNotifiche(utente)) {
+                            allegato.getMessaggio().prependBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
+                            System.out.println("[SERVER]: Notifica aggiunta al messaggio.");
+                        }
+                    }
+
+                    if(Connessione.inviaDati(client, allegato.getMessaggio()) == -1) {
                         System.err.println("[SERVER-ERROR]: Errore riceviDati. Chiudo la connessione.");
                         key.cancel();
                     }
-                    else if (allegato.haFileDaInviare()) {
-                        while (allegato.haFileDaInviare()) {
-                            if (!Connessione.inviaFile(client, allegato.popFileDaInviare())) {
-                                System.err.println("[SERVER-ERROR]: Errore inviaFile");
-                            }
-                        }
-                    }
-                    else if ((utente = allegato.getUtente()) != null){
-                        while (gestoreSessioni.haNotifiche(utente)) {
-                            allegato.getMessaggio().appendBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
-                        }
-                    }
                     else {
                         System.out.println("[SERVER]: Messaggio inviato con successo!");
+                    }
+
+                    boolean erroreInvio = false;
+                    while (allegato.haFileDaInviare() && !erroreInvio) {
+                        if ((erroreInvio = !Connessione.inviaFile(client, allegato.popFileDaInviare()))) {
+                            System.err.println("[SERVER-ERROR]: Errore inviaFile");
+                        }
                     }
 
                     // Preparo il canale per ricevere nuove operazioni

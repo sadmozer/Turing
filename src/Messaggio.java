@@ -36,6 +36,14 @@ public class Messaggio {
         this.buffer = nuovoBuffer;
     }
 
+    void prependBuffer(ByteBuffer buf) {
+        ByteBuffer nuovoBuffer = ByteBuffer.allocate(this.buffer.capacity() + buf.capacity());
+        nuovoBuffer.put(buf);
+        nuovoBuffer.put(this.buffer);
+        nuovoBuffer.flip();
+        this.buffer = nuovoBuffer;
+    }
+
     @Override
     public String toString() {
         return new String(this.buffer.array());

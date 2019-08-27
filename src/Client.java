@@ -108,6 +108,36 @@ public class Client {
         return input.matches(regex);
     }
 
+    private static void riceviNotifica(Messaggio msgRisposta, String utente) {
+        System.out.println("[NUOVA NOTIFICA!]");
+        byte[] bytesMittente = new byte[msgRisposta.getBuffer().getInt()];
+        msgRisposta.getBuffer().get(bytesMittente);
+        String mittente = new String(bytesMittente);
+        byte[] bytesNomeDoc = new byte[msgRisposta.getBuffer().getInt()];
+        msgRisposta.getBuffer().get(bytesNomeDoc);
+        String nomeDoc = new String(bytesNomeDoc);
+        int numSezioni = msgRisposta.getBuffer().getInt();
+        System.out.printf("  %s ti ha invitato a collaborare al documento %s composto da %d sezioni.%n  Ora puoi accedere e modificare il documento.%n", mittente, nomeDoc, numSezioni);
+
+        String pathDocumento = DEFAULT_DOCS_DIRECTORY + File.separator + utente + File.separator + nomeDoc;
+
+        try {
+            if (Files.notExists(Paths.get(pathDocumento))) {
+                Files.createDirectory(Paths.get(pathDocumento));
+                System.out.printf("Creata directory %s.%n", pathDocumento);
+            }
+            for (int i = 1; i <= numSezioni; i++) {
+                if (Files.notExists(Paths.get( pathDocumento + File.separator + nomeDoc + "_" + i + ".txt"))) {
+                    Files.createFile(Paths.get( pathDocumento + File.separator + nomeDoc + "_" + i + ".txt"));
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.err.println("Impossibile creare documento. Riprova.");
+        }
+
+    }
+
     // Automa
     private static void opRegister(StatoClient statoClient, String username, String password) {
         IRegistratore registratore = statoClient.getRegistratore();
@@ -121,11 +151,11 @@ public class Client {
         }
 
         if (username.length() < minLungUsername) {
-            System.err.println("L'username deve contenere almeno " + minLungUsername + " caratteri!");
+            System.err.println("L'username deve contenere almeno " + minLungUsername + " caratteri.");
             errore = true;
         }
         else if (username.length() > maxLungUsername) {
-            System.err.println("L'username deve contenere al massimo " + maxLungUsername + " caratteri!");
+            System.err.println("L'username deve contenere al massimo " + maxLungUsername + " caratteri.");
             errore = true;
         }
 
@@ -136,11 +166,11 @@ public class Client {
         }
 
         if (password.length() < minLungPassword) {
-            System.err.println("La password deve contenere almeno " + minLungPassword+ " caratteri!");
+            System.err.println("La password deve contenere almeno " + minLungPassword+ " caratteri.");
             errore = true;
         }
         else if (password.length() > maxLungPassword) {
-            System.err.println("La password deve contenere al massimo " + maxLungPassword + " caratteri!");
+            System.err.println("La password deve contenere al massimo " + maxLungPassword + " caratteri.");
             errore = true;
         }
 
@@ -168,6 +198,7 @@ public class Client {
             else {
                 if (Files.notExists(pathDatiUtente)) {
                     Files.createDirectory(pathDatiUtente);
+                    System.out.printf("Creata directory %s.%n", pathDatiUtente.toString());
                 }
                 System.out.println("Registrazione eseguita con successo.");
             }
@@ -224,39 +255,38 @@ public class Client {
             return;
         }
 
-        switch (msgRisposta.getBuffer().getInt()) {
-            case 200: {
-                System.out.println("Login eseguito con successo.");
+        while (msgRisposta.getBuffer().hasRemaining()) {
+            switch (msgRisposta.getBuffer().getInt()) {
+                case 100: {
+                    riceviNotifica(msgRisposta, username);
+                }
+                break;
+                case 200: {
+                    System.out.println("Login eseguito con successo.");
 
-                while (msgRisposta.getBuffer().hasRemaining()) {
-                    if (msgRisposta.getBuffer().getInt() == 100) {
-                        System.out.printf("[NUOVA NOTIFICA!]%n");
+                    statoClient.setUtenteLoggato(username);
+                    statoClient.setStato(Stato.LOGGED);
+                }
+                break;
+                case 201: {
+                    System.err.println("Utente inesistente. Prima devi registrarti.");
+                }
+                break;
+                case 202: {
+                    System.err.println("Password errata.");
+                }
+                break;
+                case 203: {
+                    if (statoClient.getStato().equals(Stato.LOGGED)) {
+                        System.err.printf("Sei gia' loggato come %s%nDevi prima eseguire il logout.%n", username);
+                    } else {
+                        System.err.printf("Utente %s gia' loggato su un altro host.%n", username);
                     }
-                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
-                    msgRisposta.getBuffer().get(notifica);
-                    String msgNotifica = new String(notifica);
-                    System.out.printf(msgNotifica);
                 }
-
-                statoClient.setUtenteLoggato(username);
-                statoClient.setStato(Stato.LOGGED);
-            } break;
-            case 201: {
-                System.err.println("Utente inesistente. Prima devi registrarti.");
-            } break;
-            case 202: {
-                System.err.println("Password errata.");
-            } break;
-            case 203: {
-                if (statoClient.getStato().equals(Stato.LOGGED)) {
-                    System.err.printf("Sei gia' loggato come %s%nDevi prima eseguire il logout!%n", username);
+                break;
+                default: {
+                    System.err.println("Impossibile effettuare login. Riprova.");
                 }
-                else {
-                    System.err.printf("Utente %s gia' loggato su un altro host.%n", username);
-                }
-            } break;
-            default: {
-                System.err.println("Impossibile effettuare login. Riprova.");
             }
         }
     }
@@ -318,13 +348,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    if (msgRisposta.getBuffer().getInt() == 100) {
-                        System.out.printf("[NUOVA NOTIFICA!]%n");
-                    }
-                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
-                    msgRisposta.getBuffer().get(notifica);
-                    String msgNotifica = new String(notifica);
-                    System.out.printf(msgNotifica);
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
                 } break;
                 case 200: {
                     String pathDocumento = DEFAULT_DOCS_DIRECTORY + File.separator + username + File.separator + doc;
@@ -332,6 +356,7 @@ public class Client {
                     try {
                         if (Files.notExists(Paths.get(pathDocumento))) {
                             Files.createDirectory(Paths.get(pathDocumento));
+                            System.out.printf("Creata directory %s.%n", pathDocumento);
                         }
                         for (int i = 1; i <= numSez; i++) {
                             if (Files.notExists(Paths.get( pathDocumento + File.separator + doc + "_" + i + ".txt"))) {
@@ -365,13 +390,13 @@ public class Client {
         try {
             if(!Files.exists(dirPath)) {
                 Files.createDirectory(dirPath);
+                System.out.printf("Creata directory documenti %s%n", dirPath);
             }
         } catch (IOException e) {
             e.printStackTrace();
             System.err.println("Impossibile creare directory documenti. Riprova.");
             return;
         }
-        System.out.printf("Creata directory documenti %s%n", dirPath);
     }
 
     private static void opShare(StatoClient statoClient, String doc, String username) {
@@ -427,13 +452,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    if (msgRisposta.getBuffer().getInt() == 100) {
-                        System.out.printf("[NUOVA NOTIFICA!]%n");
-                    }
-                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
-                    msgRisposta.getBuffer().get(notifica);
-                    String msgNotifica = new String(notifica);
-                    System.out.printf(msgNotifica);
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
                 } break;
                 case 203: {
                     System.err.println("Impossibile condividere documento.");
@@ -490,13 +509,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    if (msgRisposta.getBuffer().getInt() == 100) {
-                        System.out.printf("[NUOVA NOTIFICA!]%n");
-                    }
-                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
-                    msgRisposta.getBuffer().get(notifica);
-                    String msgNotifica = new String(notifica);
-                    System.out.printf(msgNotifica);
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
                 } break;
                 case 203:
                 case 204:
@@ -538,7 +551,7 @@ public class Client {
         }
 
         // Controllo il formato di numSez
-        int numSez;
+        int numSez = -1;
         try {
             numSez = Integer.parseInt(numSezione);
             if (numSez < minNumSezioni) {
@@ -583,13 +596,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    if (msgRisposta.getBuffer().getInt() == 100) {
-                        System.out.printf("[NUOVA NOTIFICA!]%n");
-                    }
-                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
-                    msgRisposta.getBuffer().get(notifica);
-                    String msgNotifica = new String(notifica);
-                    System.out.printf(msgNotifica);
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
                 } break;
                 case 200: {
                     long dimSezione = msgRisposta.getBuffer().getLong();
@@ -598,7 +605,7 @@ public class Client {
                         System.err.println("Errore riceviFile.");
                         return;
                     }
-                    System.out.printf("Inizio editing del documento %s.%n", doc);
+                    System.out.printf("Inizio editing sezione %d del documento %s.%n", numSez, doc);
                     statoClient.setStato(Stato.EDIT);
                 } break;
                 case 201:
@@ -609,10 +616,16 @@ public class Client {
                     System.err.printf("Non possiedi alcun documento chiamato %s.%n", doc);
                 } break;
                 case 205: {
-                    System.err.printf("Stai gia' modificando il documento %s.%n", doc);
+                    System.err.printf("Stai gia' modificando la sezione %d del documento %s.%n", numSez, doc);
                 } break;
                 case 206: {
                     System.err.println("Numero di sezione errato.");
+                } break;
+                case 207: {
+                    byte[] bytesMittente = new byte[msgRisposta.getBuffer().getInt()];
+                    msgRisposta.getBuffer().get(bytesMittente);
+                    String mittente = new String(bytesMittente);
+                    System.err.printf("Impossibile modificare sezione %d del documento %s.%nL'utente %s la sta modificando.%n", numSez, doc, mittente);
                 } break;
             }
         }
@@ -649,10 +662,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    byte[] notifica = new byte[msgRisposta.getBuffer().getInt()];
-                    msgRisposta.getBuffer().get(notifica);
-                    String msgNotifica = new String(notifica);
-                    System.out.println(msgNotifica);
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
                 } break;
                 case 203:
                 case 204:
@@ -689,7 +699,7 @@ public class Client {
             case "end-edit":
             case "send":
             case "receive": {
-                System.err.println("Devi prima eseguire il login!");
+                System.err.println("Devi prima eseguire il login.");
             } break;
             case "quit": {
                 statoClient.setStato(Stato.QUIT);
@@ -733,7 +743,7 @@ public class Client {
             } break;
             case "register":
             case "login": {
-                System.err.printf("Sei loggato come %s.%nDevi prima eseguire il logout!%n", statoClient.getUtenteLoggato());
+                System.err.printf("Sei loggato come %s.%nDevi prima eseguire il logout.%n", statoClient.getUtenteLoggato());
             }
             case "end-edit":
             case "send":
@@ -806,7 +816,7 @@ public class Client {
         // Tento di connettermi al server
         InetSocketAddress serverAddress = new InetSocketAddress(hostAddress, DEFAULT_CLIENT_PORT);
         while (!tryConnect(socket, serverAddress)) {
-            System.err.println("[CLIENT]: Impossibile connettersi! Riprovo..");
+            System.err.println("[CLIENT]: Impossibile connettersi. Riprovo..");
         }
 
         // Creo cartella dei documenti

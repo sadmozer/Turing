@@ -171,28 +171,28 @@ public class GestoreDocumenti {
         return ret;
     }
 
-    public boolean isEditing(String nomeDoc, int numSez, Utente utente) {
+    public Utente isEditing(String nomeDoc, int numSez, Utente utente) {
         HashMap<String, Documento> mappaDocumenti;
         if ((mappaDocumenti = documentiPerUtente.get(utente)) == null) {
-            return false;
+            return null;
         }
 
         Documento doc;
         if ((doc = mappaDocumenti.get(nomeDoc)) == null) {
-            return false;
+            return null;
         }
 
         Utente[] utentiAttivi;
         if ((utentiAttivi = attiviPerDocumento.get(doc)) == null) {
-            return false;
+            return null;
         }
 
         Utente attivo;
         if ((attivo = utentiAttivi[numSez]) == null) {
-            return false;
+            return null;
         }
 
-        return utente.equals(attivo);
+        return attivo;
     }
 
     public boolean inizioEditing(String nomeDoc, int numSez, Utente utente) {
