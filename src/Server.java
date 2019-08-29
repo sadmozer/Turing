@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -106,7 +107,7 @@ public class Server {
         System.out.println("[SERVER]: Server Selector configurato.");
 
         GestoreSessioni gestoreSessioni = new GestoreSessioni();
-        GestoreDocumenti gestoreDocumenti = new GestoreDocumenti(DEFAULT_DOCS_DIRECTORY);
+        GestoreDocumenti gestoreDocumenti = new GestoreDocumenti(DEFAULT_DOCS_DIRECTORY, "239.0.0.0");
         // Mi metto in ascolto
         int count = 0;
         while (true) {
@@ -149,15 +150,24 @@ public class Server {
                     SocketChannel client = (SocketChannel) key.channel();
                     Messaggio msgRicevuto = new Messaggio();
                     Messaggio msgRisposta = new Messaggio();
-                    Allegato allegato = null;
+                    Allegato allegato;
+                    if ((allegato = (Allegato) key.attachment()) == null) {
+                        allegato = new Allegato();
+                    }
 
-                    if((Connessione.riceviDati(client, msgRicevuto)) == -1) {
-                        System.err.println("[SERVER-ERROR]: Errore riceviDati. Chiudo la connessione.");
-                        if ((allegato = (Allegato) key.attachment()) != null) {
-                            if (gestoreSessioni.isLoggato(allegato.getUtente().getUsername())) {
-                                gestoreSessioni.logout(allegato.getUtente().getUsername());
-                            }
+                    if (allegato.getPathFileDaRicevere() != null) {
+                        if (!Connessione.riceviFile(client, allegato.getDimFileDaRicevere(), allegato.getPathFileDaRicevere())) {
+                            System.err.println("[SERVER-ERROR]: Errore riceviFile.");
+                            msgRisposta.setBuffer(203);
                         }
+                        else {
+                            allegato.setPathFileDaRicevere(null);
+                            System.out.println("[SERVER]: File ricevuto con successo.");
+                            msgRisposta.setBuffer(200);
+                        }
+                    }
+                    else if((Connessione.riceviDati(client, msgRicevuto)) == -1) {
+                        System.err.println("[SERVER-ERROR]: Errore riceviDati. Chiudo la connessione.");
                         key.cancel();
                     }
                     else {
@@ -169,7 +179,7 @@ public class Server {
                                 String username = comandi[1];
                                 String password = comandi[2];
                                 Utente utente;
-                                allegato = new Allegato();
+
                                 allegato.setMessaggio(msgRisposta);
 
                                 if ((utente = registratore.getUtente(username)) == null) {
@@ -199,119 +209,55 @@ public class Server {
                                 }
                             } break;
                             case "logout": {
-                                Utente utente = null;
-                                String username;
-
-                                if ((allegato = (Allegato) key.attachment()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto0.");
-                                    allegato = new Allegato();
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if ((utente = allegato.getUtente()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto1.");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if((username = utente.getUsername()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto2.");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if (!gestoreSessioni.isLoggato(username)){
-                                    System.err.printf("[SERVER-ERROR]: Errore utente %s non loggato.%n", username);
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(204);
-                                }
-                                else if (!gestoreSessioni.logout(username)){
+                                Utente utente = allegato.getUtente();
+                                String username = utente.getUsername();
+                                allegato.setMessaggio(msgRisposta);
+                                if (!gestoreSessioni.logout(username)){
                                     System.err.printf("[SERVER-ERROR]: Errore logout %s.%n", username);
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(205);
                                 }
                                 else {
                                     System.out.printf("[SERVER]: Logout %s effettuato.%n", username);
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(200);
                                 }
                             } break;
                             case "create": {
-                                Utente utente = null;
-                                String username;
+                                Utente utente = allegato.getUtente();
+                                String username = utente.getUsername();
                                 String nomeDoc = comandi[1];
                                 int numSezioni = Integer.parseInt(comandi[2]);
+                                allegato.setMessaggio(msgRisposta);
 
-                                if ((allegato = (Allegato) key.attachment()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto0.");
-                                    allegato = new Allegato();
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if ((utente = allegato.getUtente()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto1.");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if((username = utente.getUsername()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto2.");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if (!gestoreSessioni.isLoggato(username)) {
-                                    System.err.printf("[SERVER-ERROR]: Errore utente %s non loggato.%n", username);
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(204);
-                                }
-                                else if (!gestoreDocumenti.creaDirectoryDocumenti(utente)) {
+                                if (!gestoreDocumenti.creaDirectoryDocumenti(utente)) {
                                     System.err.println("[SERVER-ERROR]: Impossibile creare directory documenti.");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(205);
                                 }
                                 else if (gestoreDocumenti.haDocumento(nomeDoc, utente)) {
                                     System.err.println("[SERVER-ERROR]: Documento gia presente.");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(201);
                                 }
                                 else if (!gestoreDocumenti.creaDocumento(nomeDoc, utente, numSezioni)){
-                                    System.err.println("[SERVER-ERROR]: Documento gia presente.");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(201);
+                                    System.err.println("[SERVER-ERROR]: Errore crea documento.");
+                                    msgRisposta.setBuffer(203);
                                 }
                                 else {
                                     System.out.printf("[SERVER]: Documento %s di %s creato.%n", nomeDoc, username);
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(200);
+
+
                                 }
                             } break;
                             case "list": {
-                                Utente utente = null;
-                                String username;
+                                Utente utente = allegato.getUtente();
                                 String listaDoc;
-                                if ((allegato = (Allegato) key.attachment()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto0.");
-                                    allegato = new Allegato();
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if ((utente = allegato.getUtente()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto1.");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if((username = utente.getUsername()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto2.");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if (!gestoreSessioni.isLoggato(username)) {
-                                    System.err.printf("[SERVER-ERROR]: Errore utente %s non loggato.%n", username);
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(204);
-                                }
-                                else if ((listaDoc = gestoreDocumenti.getListaDocumenti(utente)) == null) {
+                                allegato.setMessaggio(msgRisposta);
+
+                                if ((listaDoc = gestoreDocumenti.getListaDocumenti(utente)) == null) {
                                     System.out.println("[SERVER-ERROR]: Non ha documenti.");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(201);
                                 }
                                 else {
                                     System.out.println("[SERVER]: Lista inviata.");
-                                    allegato.setMessaggio(msgRisposta);
                                     ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES + Integer.BYTES + listaDoc.getBytes().length);
                                     buf.putInt(200);
                                     buf.putInt(listaDoc.getBytes().length);
@@ -321,64 +267,38 @@ public class Server {
                                 }
                             } break;
                             case "share": {
-                                Utente utente = null;
-                                String username;
+                                Utente utente = allegato.getUtente();
+                                String username = utente.getUsername();
                                 String nomeDoc = comandi[1];
                                 String usernameInvitato = comandi[2];
+                                allegato.setMessaggio(msgRisposta);
 
-                                if ((allegato = (Allegato) key.attachment()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto0.");
-                                    allegato = new Allegato();
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if ((utente = allegato.getUtente()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto1.");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if((username = utente.getUsername()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto2.");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if (username.equals(usernameInvitato)) {
+                                if (username.equals(usernameInvitato)) {
                                     System.err.println("[SERVER-ERROR]: Autoinvito.");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(206);
-                                }
-                                else if (!gestoreSessioni.isLoggato(username)) {
-                                    System.err.printf("[SERVER-ERROR]: Errore utente %s non loggato.%n", username);
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
                                 }
                                 else if (!registratore.isRegistrato(usernameInvitato)) {
                                     System.err.printf("[SERVER-ERROR]: Errore utenteInvitato %s non registrato.%n", usernameInvitato);
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(205);
                                 }
                                 else if (!gestoreDocumenti.haDocumento(nomeDoc, utente)) {
                                     System.err.println("[SERVER-ERROR]: Non esiste documento.");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(207);
                                 }
                                 else if (!gestoreDocumenti.isCreatore(nomeDoc, utente)) {
                                     System.err.println("[SERVER-ERROR]: Utente non creatore non puo' invitare.");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(210);
                                 }
                                 else if (gestoreDocumenti.haDocumento(nomeDoc, registratore.getUtente(usernameInvitato))) {
                                     System.err.println("[SERVER-ERROR]: Documento con stesso nome.");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(209);
                                 }
                                 else if (gestoreDocumenti.isCollaboratore(usernameInvitato, nomeDoc, utente)) {
                                     System.err.println("[SERVER-ERROR]: Utente gia' collaboratore.");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(208);
                                 }
                                 else if (!gestoreDocumenti.condividiDocumento(nomeDoc, utente, registratore.getUtente(usernameInvitato))) {
                                     System.err.println("[SERVER-ERROR]: Errore condivisione documento");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(203);
                                 }
                                 else {
@@ -395,48 +315,65 @@ public class Server {
                                     invito.setBuffer(bufferNotifica);
                                     gestoreSessioni.addNotifica(invito, registratore.getUtente(usernameInvitato));
 
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(200);
                                 }
                             } break;
-                            case "show": {
+                            case "show1": {
+                                Utente utente = allegato.getUtente();
+                                Utente occupante;
+                                String nomeDoc = comandi[1];
+                                int numSezione = Integer.parseInt(comandi[2]) - 1;
+                                allegato.setMessaggio(msgRisposta);
+
+                                if (!gestoreDocumenti.haDocumento(nomeDoc, utente)) {
+                                    System.err.println("[SERVER-ERROR]: Non ha documento.%n");
+                                    msgRisposta.setBuffer(204);
+                                }
+                                else if (numSezione >= gestoreDocumenti.getNumSezioni(nomeDoc, utente)) {
+                                    System.err.println("[SERVER-ERROR]: numSezione out of bound.%n");
+                                    msgRisposta.setBuffer(206);
+                                }
+                                else if ((occupante = gestoreDocumenti.isEditing(nomeDoc, numSezione, utente)) != null) {
+                                    System.err.printf("[SERVER]: %s sta occupando documento %d .%n", occupante.getUsername(), occupante.getUsername().getBytes().length);
+                                    msgRisposta.setBuffer(200);
+
+                                    ByteBuffer dimBuf = ByteBuffer.allocate(Integer.BYTES);
+                                    dimBuf.putInt(occupante.getUsername().getBytes().length);
+                                    dimBuf.flip();
+                                    msgRisposta.appendBuffer(dimBuf);
+
+                                    msgRisposta.appendBuffer(ByteBuffer.wrap(occupante.getUsername().getBytes()));
+
+                                    allegato.pushFileDaInviare(Paths.get(gestoreDocumenti.getPathSezione(nomeDoc, numSezione, utente)));
+                                }
+                                else {
+                                    System.out.printf("[SERVER]: Show documento %s sez %d utente %s.%n", nomeDoc, numSezione, utente.getUsername());
+
+                                    msgRisposta.setBuffer(201);
+
+                                    allegato.pushFileDaInviare(Paths.get(gestoreDocumenti.getPathSezione(nomeDoc, numSezione, utente)));
+                                }
+                            } break;
+                            case "show2": {
 
                             } break;
                             case "edit": {
-                                Utente utente = null;
-                                Utente occupante = null;
-                                String username;
+                                Utente utente = allegato.getUtente();
+                                Utente occupante;
                                 String nomeDoc = comandi[1];
-                                int numSezione = Integer.parseInt(comandi[2]);
+                                int numSezione = Integer.parseInt(comandi[2]) - 1;
+                                allegato.setMessaggio(msgRisposta);
 
-                                if ((allegato = (Allegato) key.attachment()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto0.");
-                                    allegato = new Allegato();
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if ((utente = allegato.getUtente()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto1.");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if((username = utente.getUsername()) == null) {
-                                    System.err.println("[SERVER-ERROR]: Errore utente sconosciuto2.");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if (!gestoreSessioni.isLoggato(username)) {
-                                    System.err.printf("[SERVER-ERROR]: Errore utente %s non loggato.%n", username);
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(203);
-                                }
-                                else if (!gestoreDocumenti.haDocumento(nomeDoc, utente)) {
+                                if (!gestoreDocumenti.haDocumento(nomeDoc, utente)) {
                                     System.err.println("[SERVER-ERROR]: Non ha documento.%n");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(204);
+                                }
+                                else if (numSezione >= gestoreDocumenti.getNumSezioni(nomeDoc, utente)) {
+                                    System.err.println("[SERVER-ERROR]: numSezione out of bound.%n");
+                                    msgRisposta.setBuffer(206);
                                 }
                                 else if ((occupante = gestoreDocumenti.isEditing(nomeDoc, numSezione, utente)) != null && !occupante.equals(utente)) {
                                     System.err.printf("[SERVER-ERROR]: %s sta occupando documento %d .%n", occupante.getUsername(), occupante.getUsername().getBytes().length);
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(207);
 
                                     ByteBuffer dimBuf = ByteBuffer.allocate(Integer.BYTES);
@@ -446,34 +383,52 @@ public class Server {
 
                                     msgRisposta.appendBuffer(ByteBuffer.wrap(occupante.getUsername().getBytes()));
                                 }
-                                else if (occupante!= null && occupante.equals(utente)) {
+                                else if (occupante != null && occupante.equals(utente)) {
                                     System.err.println("[SERVER-ERROR]: Utente sta gia' modificando documento.%n");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(205);
-                                }
-                                else if (gestoreDocumenti.getNumSezioni(nomeDoc, utente) < numSezione) {
-                                    System.err.println("[SERVER-ERROR]: numSezione out of bound.%n");
-                                    allegato.setMessaggio(msgRisposta);
-                                    msgRisposta.setBuffer(206);
                                 }
                                 else if (!gestoreDocumenti.inizioEditing(nomeDoc, numSezione, utente)) {
                                     System.err.println("[SERVER-ERROR]: Errore inizioEditing.%n");
-                                    allegato.setMessaggio(msgRisposta);
                                     msgRisposta.setBuffer(203);
                                 }
                                 else {
                                     System.out.printf("[SERVER]: InizioEditing documento %s sez %d utente %s.%n", nomeDoc, numSezione, utente.getUsername());
-                                    allegato.setMessaggio(msgRisposta);
+
+                                    msgRisposta.setBuffer(200);
+
+                                    String striIpChat = gestoreDocumenti.getChatIpDocumento(nomeDoc, utente);
+                                    ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES + striIpChat.getBytes().length);
+                                    buf.putInt(striIpChat.getBytes().length);
+                                    buf.put(striIpChat.getBytes());
+                                    buf.flip();
+
+                                    msgRisposta.appendBuffer(buf);
+
                                     ByteBuffer dimensioneSezione = ByteBuffer.allocate(Long.BYTES);
                                     dimensioneSezione.putLong(gestoreDocumenti.getDimSezione(nomeDoc, numSezione, utente));
                                     dimensioneSezione.flip();
-                                    msgRisposta.setBuffer(200);
+
                                     msgRisposta.appendBuffer(dimensioneSezione);
+
                                     allegato.pushFileDaInviare(Paths.get(gestoreDocumenti.getPathSezione(nomeDoc, numSezione, utente)));
                                 }
                             } break;
                             case "end-edit": {
-                                // cia
+                                allegato = (Allegato) key.attachment();
+                                Utente utente = allegato.getUtente();
+                                String nomeDoc = comandi[1];
+                                int numSezione = Integer.parseInt(comandi[2]) - 1;
+                                long dimFile = Long.parseLong(comandi[3]);
+                                String strPathFile = gestoreDocumenti.getPathSezione(nomeDoc, numSezione, utente);
+                                System.out.printf("[SERVER]: Verra' sovrascritto il file %s.%n", strPathFile);
+                                allegato.setMessaggio(msgRisposta);
+
+                                msgRisposta.setBuffer(200);
+                                allegato.setPathFileDaRicevere(Paths.get(strPathFile));
+                                allegato.setDimFileDaRicevere(dimFile);
+
+                                System.out.printf("[SERVER]: FineEditing documento %s sez %d utente %s.%n", nomeDoc, numSezione, utente.getUsername());
+                                gestoreDocumenti.fineEditing(nomeDoc, numSezione, allegato.getUtente());
                             } break;
                         }
 
@@ -507,6 +462,7 @@ public class Server {
                     }
                     else {
                         System.out.println("[SERVER]: Messaggio inviato con successo!");
+                        allegato.setMessaggio(null);
                     }
 
                     boolean erroreInvio = false;

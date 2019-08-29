@@ -13,9 +13,11 @@ public class GestoreDocumenti {
     private HashMap<Documento, HashSet<String>> collaboratoriPerDocumento = new HashMap<>();
     private HashMap<Documento, Utente[]> attiviPerDocumento= new HashMap<>();
     private String pathMainDirectory = "";
+    private String ipChatIniziale = "";
 
-    public GestoreDocumenti(String pathMainDirectory) {
+    public GestoreDocumenti(String pathMainDirectory, String ipChatIniziale) {
         this.pathMainDirectory = pathMainDirectory;
+        this.ipChatIniziale = ipChatIniziale;
     }
 
     public boolean creaDirectoryDocumenti(Utente utente) {
@@ -24,10 +26,12 @@ public class GestoreDocumenti {
         try {
             if (!Files.exists(mainPath)) {
                 Files.createDirectory(mainPath);
+                System.out.println("Creata main directory.");
             }
 
             if(!documentiPerUtente.containsKey(utente) && !Files.exists(dirPath)) {
                 Files.createDirectory(dirPath);
+                System.out.printf("Creata directory documenti %s path %s.%n", utente.getUsername(), dirPath.toString());
                 documentiPerUtente.put(utente, new HashMap<>());
             }
         } catch (IOException e) {
@@ -76,7 +80,10 @@ public class GestoreDocumenti {
 
     public boolean creaDocumento(String nomeDoc, Utente utenteCreatore, int numSezioni) {
         // Creo nuovo documento
-        Documento nuovoDocumento = new Documento(nomeDoc, utenteCreatore, numSezioni);
+        Documento nuovoDocumento = new Documento(nomeDoc, utenteCreatore, numSezioni, ipChatIniziale);
+
+        // Genero l'ip successivo
+        ipChatIniziale = IpConverter.next(ipChatIniziale);
 
         // Prendo la hashmap dei documenti di utenteCreatore
         HashMap<String, Documento> mappaDocumenti;
@@ -238,5 +245,9 @@ public class GestoreDocumenti {
         }
         return dimSezione;
 
+    }
+
+    public String getChatIpDocumento(String nomeDoc, Utente utente) {
+        return documentiPerUtente.get(utente).get(nomeDoc).getIpChat();
     }
 }

@@ -107,11 +107,13 @@ public class Connessione {
 
     public static boolean riceviFile(SocketChannel socket, Long dimFile, Path pathFile) {
         FileChannel fileChannel;
-
+        long totBytes = 0L;
         try {
             FileOutputStream fileOutputStream = new FileOutputStream(pathFile.toString());
             fileChannel = fileOutputStream.getChannel();
-            fileChannel.transferFrom(socket, 0, dimFile);
+            while (totBytes < dimFile) {
+                totBytes += fileChannel.transferFrom(socket, 0, dimFile);
+            }
             fileChannel.close();
         } catch (IOException e) {
             e.printStackTrace();
