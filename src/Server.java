@@ -3,14 +3,13 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
     private static final int DEFAULT_REGISTRY_PORT = 6000;
@@ -108,6 +107,7 @@ public class Server {
 
         GestoreSessioni gestoreSessioni = new GestoreSessioni();
         GestoreDocumenti gestoreDocumenti = new GestoreDocumenti(DEFAULT_DOCS_DIRECTORY, "239.0.0.0");
+
         // Mi metto in ascolto
         int count = 0;
         while (true) {
@@ -322,7 +322,7 @@ public class Server {
                                 Utente utente = allegato.getUtente();
                                 Utente occupante;
                                 String nomeDoc = comandi[1];
-                                int numSezione = Integer.parseInt(comandi[2]) - 1;
+                                int numSezione = Integer.parseInt(comandi[2]);
                                 allegato.setMessaggio(msgRisposta);
 
                                 if (!gestoreDocumenti.haDocumento(nomeDoc, utente)) {
@@ -344,24 +344,98 @@ public class Server {
 
                                     msgRisposta.appendBuffer(ByteBuffer.wrap(occupante.getUsername().getBytes()));
 
+                                    ByteBuffer dimensioneSezione = ByteBuffer.allocate(Long.BYTES);
+                                    dimensioneSezione.putLong(gestoreDocumenti.getDimSezione(nomeDoc, numSezione, utente));
+                                    dimensioneSezione.flip();
+
+                                    msgRisposta.appendBuffer(dimensioneSezione);
+
                                     allegato.pushFileDaInviare(Paths.get(gestoreDocumenti.getPathSezione(nomeDoc, numSezione, utente)));
                                 }
                                 else {
-                                    System.out.printf("[SERVER]: Show documento %s sez %d utente %s.%n", nomeDoc, numSezione, utente.getUsername());
+                                    System.out.printf("[SERVER]: Show1 documento %s sez %d utente %s.%n", nomeDoc, numSezione, utente.getUsername());
 
                                     msgRisposta.setBuffer(201);
+
+                                    ByteBuffer dimensioneSezione = ByteBuffer.allocate(Long.BYTES);
+                                    dimensioneSezione.putLong(gestoreDocumenti.getDimSezione(nomeDoc, numSezione, utente));
+                                    dimensioneSezione.flip();
+
+                                    msgRisposta.appendBuffer(dimensioneSezione);
 
                                     allegato.pushFileDaInviare(Paths.get(gestoreDocumenti.getPathSezione(nomeDoc, numSezione, utente)));
                                 }
                             } break;
                             case "show2": {
+                                Utente utente = allegato.getUtente();
+                                Utente occupante;
+                                String nomeDoc = comandi[1];
+                                int numSezioni;
+                                allegato.setMessaggio(msgRisposta);
 
+                                if (!gestoreDocumenti.haDocumento(nomeDoc, utente)) {
+                                    System.err.println("[SERVER-ERROR]: Non ha documento.%n");
+                                    msgRisposta.setBuffer(204);
+                                }
+                                else {
+                                    numSezioni = gestoreDocumenti.getNumSezioni(nomeDoc, utente);
+                                    LinkedList<String> utentiAttivi = new LinkedList<>();
+                                    LinkedList<Integer> sezEditata = new LinkedList<>();
+                                    LinkedList<Integer> dimUtenti = new LinkedList<>();
+                                    int dimTotale = 0;
+                                    for (int i = 0; i < numSezioni; i++) {
+                                        if ((occupante = gestoreDocumenti.isEditing(nomeDoc, i, utente)) != null) {
+                                            utentiAttivi.add(occupante.getUsername());
+                                            dimUtenti.add(occupante.getUsername().length());
+                                            dimTotale += occupante.getUsername().length();
+                                            sezEditata.add(i);
+                                        }
+                                    }
+
+                                    ByteBuffer buf = ByteBuffer.allocate((utentiAttivi.size() + 2) * Integer.BYTES + dimTotale);
+                                    Iterator<String> itUtenti = utentiAttivi.iterator();
+                                    Iterator<Integer> itDim = dimUtenti.iterator();
+                                    Iterator<Integer> itSez = sezEditata.iterator();
+
+                                    // Numero di utenti attivi
+                                    buf.putInt(utentiAttivi.size());
+
+                                    while (itUtenti.hasNext()) {
+                                        // Dimensione del nome utente
+                                        buf.putInt(itDim.next());
+
+                                        // Nome Utente
+                                        buf.put(itUtenti.next().getBytes());
+
+                                        // Numero di sezione editata
+                                        buf.putInt(itSez.next());
+                                    }
+
+                                    // Numero di sezioni del documento
+                                    buf.putInt(numSezioni);
+                                    buf.flip();
+
+                                    System.out.printf("[SERVER]: Show2 documento %s utente %s.%n", nomeDoc, utente.getUsername());
+
+                                    msgRisposta.setBuffer(200);
+                                    msgRisposta.appendBuffer(buf);
+
+                                    for (int i = 1; i <= numSezioni; i++) {
+                                        ByteBuffer dimensioneSezione = ByteBuffer.allocate(Long.BYTES);
+                                        dimensioneSezione.putLong(gestoreDocumenti.getDimSezione(nomeDoc, i, utente));
+                                        dimensioneSezione.flip();
+
+                                        msgRisposta.appendBuffer(dimensioneSezione);
+
+                                        allegato.pushFileDaInviare(Paths.get(gestoreDocumenti.getPathSezione(nomeDoc, i, utente)));
+                                    }
+                                }
                             } break;
                             case "edit": {
                                 Utente utente = allegato.getUtente();
                                 Utente occupante;
                                 String nomeDoc = comandi[1];
-                                int numSezione = Integer.parseInt(comandi[2]) - 1;
+                                int numSezione = Integer.parseInt(comandi[2]);
                                 allegato.setMessaggio(msgRisposta);
 
                                 if (!gestoreDocumenti.haDocumento(nomeDoc, utente)) {
@@ -417,7 +491,7 @@ public class Server {
                                 allegato = (Allegato) key.attachment();
                                 Utente utente = allegato.getUtente();
                                 String nomeDoc = comandi[1];
-                                int numSezione = Integer.parseInt(comandi[2]) - 1;
+                                int numSezione = Integer.parseInt(comandi[2]);
                                 long dimFile = Long.parseLong(comandi[3]);
                                 String strPathFile = gestoreDocumenti.getPathSezione(nomeDoc, numSezione, utente);
                                 System.out.printf("[SERVER]: Verra' sovrascritto il file %s.%n", strPathFile);
@@ -449,28 +523,31 @@ public class Server {
                         System.err.println("[SERVER-ERROR]: Allegato vuoto. Chiudo la connessione.");
                         key.cancel();
                     }
-                    else if ((utente = allegato.getUtente()) != null){
-                        while (gestoreSessioni.haNotifiche(utente)) {
-                            allegato.getMessaggio().prependBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
-                            System.out.println("[SERVER]: Notifica aggiunta al messaggio.");
-                        }
-                    }
-
-                    if(Connessione.inviaDati(client, allegato.getMessaggio()) == -1) {
-                        System.err.println("[SERVER-ERROR]: Errore riceviDati. Chiudo la connessione.");
-                        key.cancel();
-                    }
                     else {
-                        System.out.println("[SERVER]: Messaggio inviato con successo!");
-                        allegato.setMessaggio(null);
-                    }
+                        if ((utente = allegato.getUtente()) != null){
+                            while (gestoreSessioni.haNotifiche(utente)) {
+                                allegato.getMessaggio().prependBuffer(gestoreSessioni.popNotifica(utente).getBuffer());
+                                System.out.println("[SERVER]: Notifica aggiunta al messaggio.");
+                            }
+                        }
 
-                    boolean erroreInvio = false;
-                    while (allegato.haFileDaInviare() && !erroreInvio) {
-                        if ((erroreInvio = !Connessione.inviaFile(client, allegato.popFileDaInviare()))) {
-                            System.err.println("[SERVER-ERROR]: Errore inviaFile");
+                        if(Connessione.inviaDati(client, allegato.getMessaggio()) == -1) {
+                            System.err.println("[SERVER-ERROR]: Errore riceviDati. Chiudo la connessione.");
+                            key.cancel();
+                        }
+                        else {
+                            System.out.println("[SERVER]: Messaggio inviato con successo!");
+                            allegato.setMessaggio(null);
+                        }
+
+                        boolean erroreInvio = false;
+                        while (allegato.haFileDaInviare() && !erroreInvio) {
+                            if ((erroreInvio = !Connessione.inviaFile(client, allegato.popFileDaInviare()))) {
+                                System.err.println("[SERVER-ERROR]: Errore inviaFile");
+                            }
                         }
                     }
+
 
                     // Preparo il canale per ricevere nuove operazioni
                     try {

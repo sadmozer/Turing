@@ -13,7 +13,7 @@ public class StatoClient {
     private MulticastSocket multicastSocket;
     private HashMap<String, Integer> sezioniPerDocumentoEditati;
 
-    public StatoClient(IRegistratore registratore, SocketChannel socket, Stato stato) {
+    StatoClient(IRegistratore registratore, SocketChannel socket, Stato stato) {
         this.registratore = registratore;
         this.socket = socket;
         this.stato = stato;
@@ -21,15 +21,15 @@ public class StatoClient {
         this.sezioniPerDocumentoEditati = new HashMap<>();
     }
 
-    public Stato getStato() {
+    Stato getStato() {
         return stato;
     }
 
-    public void setStato(Stato stato) {
+    void setStato(Stato stato) {
         this.stato = stato;
     }
 
-    public SocketChannel getSocket() {
+    SocketChannel getSocket() {
         return socket;
     }
 
@@ -37,7 +37,7 @@ public class StatoClient {
         this.socket = socket;
     }
 
-    public IRegistratore getRegistratore() {
+    IRegistratore getRegistratore() {
         return registratore;
     }
 
@@ -46,22 +46,22 @@ public class StatoClient {
 
     }
 
-    public String getUtenteLoggato() {
+    String getUtenteLoggato() {
         return utenteLoggato;
     }
 
-    public void setUtenteLoggato(String utenteLoggato) {
+    void setUtenteLoggato(String utenteLoggato) {
         this.utenteLoggato = utenteLoggato;
     }
 
-    public int staEditando(String nomeDoc) {
+    int staEditando(String nomeDoc) {
         if (!sezioniPerDocumentoEditati.containsKey(nomeDoc)) {
             return -1;
         }
         return sezioniPerDocumentoEditati.get(nomeDoc);
     }
 
-    public boolean iniziaEditing(String nomeDoc, int numSez, int portChat) {
+    boolean iniziaEditing(String nomeDoc, int numSez, int portChat) {
         try {
             multicastSocket = new MulticastSocket(portChat);
             multicastSocket.setSoTimeout(500);
@@ -72,19 +72,19 @@ public class StatoClient {
         return sezioniPerDocumentoEditati.putIfAbsent(nomeDoc, numSez) == null;
     }
 
-    public boolean fineEditing(String nomeDoc) {
+    boolean fineEditing(String nomeDoc) {
         return sezioniPerDocumentoEditati.remove(nomeDoc) != null;
     }
 
-    public String getIpChat() {
+    String getIpChat() {
         return ipChat;
     }
 
-    public void setIpChat(String ipChat) {
+    void setIpChat(String ipChat) {
         this.ipChat = ipChat;
     }
 
-    public MulticastSocket getMulticastSocket() {
+    MulticastSocket getMulticastSocket() {
         return multicastSocket;
     }
 

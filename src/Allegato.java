@@ -8,50 +8,49 @@ public class Allegato {
     private Path pathFileDaRicevere = null;
     private long dimFileDaRicevere = 0L;
 
-    public Allegato() {
+    Allegato() {
         this.fileDaInviare = new LinkedList<>();
     }
 
-    public Utente getUtente() {
+    Utente getUtente() {
         return utente;
     }
 
-    public void setUtente(Utente utente) {
+    void setUtente(Utente utente) {
         this.utente = utente;
     }
 
-    public Messaggio getMessaggio() {
+    Messaggio getMessaggio() {
         return messaggio;
     }
 
-    public void setMessaggio(Messaggio messaggio) {
+    void setMessaggio(Messaggio messaggio) {
         this.messaggio = messaggio;
     }
 
-    public boolean haFileDaInviare() {
+    boolean haFileDaInviare() {
         return !fileDaInviare.isEmpty();
     }
-    public void pushFileDaInviare(Path pathFile) {
+    void pushFileDaInviare(Path pathFile) {
         fileDaInviare.push(pathFile);
     }
-    public Path popFileDaInviare() {
+    Path popFileDaInviare() {
         return fileDaInviare.pop();
     }
 
-
-    public Path getPathFileDaRicevere() {
+    Path getPathFileDaRicevere() {
         return pathFileDaRicevere;
     }
 
-    public void setPathFileDaRicevere(Path pathFileDaRicevere) {
+    void setPathFileDaRicevere(Path pathFileDaRicevere) {
         this.pathFileDaRicevere = pathFileDaRicevere;
     }
 
-    public long getDimFileDaRicevere() {
+    long getDimFileDaRicevere() {
         return dimFileDaRicevere;
     }
 
-    public void setDimFileDaRicevere(long dimFileDaRicevere) {
+    void setDimFileDaRicevere(long dimFileDaRicevere) {
         this.dimFileDaRicevere = dimFileDaRicevere;
     }
 }

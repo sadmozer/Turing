@@ -7,14 +7,14 @@ public class Documento {
     private String pathFile;
     private String ipChat;
 
-    public Documento(String nomeDocumento, Utente creatore, int numSezioni, String ipChat) {
+    Documento(String nomeDocumento, Utente creatore, int numSezioni, String ipChat) {
         this.nomeDocumento = nomeDocumento;
         this.creatore = creatore;
         this.numSezioni = numSezioni;
         this.ipChat = ipChat;
     }
 
-    public Utente getCreatore() {
+    Utente getCreatore() {
         return creatore;
     }
 
@@ -22,7 +22,7 @@ public class Documento {
         this.creatore = creatore;
     }
 
-    public int getNumSezioni() {
+    int getNumSezioni() {
         return numSezioni;
     }
 
@@ -34,15 +34,15 @@ public class Documento {
         this.nomeDocumento = nomeDocumento;
     }
 
-    public String getPathFile() {
+    String getPathFile() {
         return pathFile;
     }
 
-    public void setPathFile(String pathFile) {
+    void setPathFile(String pathFile) {
         this.pathFile = pathFile;
     }
 
-    public String getIpChat() {
+    String getIpChat() {
         return ipChat;
     }
 

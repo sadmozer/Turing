@@ -2,9 +2,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.*;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnresolvedAddressException;
 import java.nio.file.Files;
@@ -101,6 +98,7 @@ public class Client {
         regex += "turing\\sedit\\s([^\\s]+)\\s([^\\s]+)|";
         regex += "turing\\send-edit\\s([^\\s]+)\\s([^\\s]+)|";
         regex += "turing\\sshow\\s([^\\s]+)\\s([^\\s]+)|";
+        regex += "turing\\sshow\\s([^\\s]+)|";
         regex += "turing\\ssend\\s\"([^\"]+)\"|";
         regex += "turing\\sreceive|";
         regex += "turing\\slogout|";
@@ -593,7 +591,89 @@ public class Client {
     }
 
     private static void opShow2(StatoClient statoClient, String doc) {
+        SocketChannel socket = statoClient.getSocket();
 
+        // Controllo il formato di doc
+        boolean errore = false;
+        if (!doc.matches("^[a-zA-Z0-9]+$")) {
+            System.err.println("Nome documento errato.");
+            errore = true;
+        }
+        if (doc.length() < minLungDocumento) {
+            System.err.println("Nome documento errato.");
+            errore = true;
+        }
+        else if(doc.length() > maxLungDocumento) {
+            System.err.println("Nome documento errato.");
+            errore = true;
+        }
+
+        if (errore) {
+            return;
+        }
+
+        Messaggio msgInvio = new Messaggio();
+        Messaggio msgRisposta = new Messaggio();
+        msgInvio.setBuffer("show2 " + doc);
+
+        if (Connessione.inviaDati(socket, msgInvio) == -1) {
+            System.err.println("Impossibile visualizzare documento. Riprova.");
+            return;
+        }
+
+        if (Connessione.riceviDati(socket, msgRisposta) == -1) {
+            System.err.println("Impossibile visualizzare documento. Riprova.");
+            return;
+        }
+
+        while (msgRisposta.getBuffer().hasRemaining()) {
+            switch (msgRisposta.getBuffer().getInt()) {
+                case 100: {
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
+                } break;
+                case 200: {
+                    int numUtentiAttivi = msgRisposta.getBuffer().getInt();
+
+                    for (int i = 0; i < numUtentiAttivi; i++) {
+                        byte[] bytesMittente = new byte[msgRisposta.getBuffer().getInt()];
+                        msgRisposta.getBuffer().get(bytesMittente);
+                        String mittente = new String(bytesMittente);
+
+                        System.out.printf("L'utente %s sta editando la sezione %d.%n", mittente, msgRisposta.getBuffer().getInt());
+                    }
+
+                    int numSezioni = msgRisposta.getBuffer().getInt();
+                    System.out.printf("Numero di sezioni da scaricare: %d.%n", numSezioni);
+                    for (int i = 1; i <= numSezioni; i++) {
+                        Path pathFile = Paths.get(DEFAULT_DOCS_DIRECTORY + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator + doc + "_" + i + ".txt");
+                        try {
+                            if (!Files.exists(pathFile)) {
+                                Files.createFile(pathFile);
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        long dimSezione = msgRisposta.getBuffer().getLong();
+                        if (!Connessione.riceviFile(socket, dimSezione, pathFile)) {
+                            System.err.println("Errore riceviFile.");
+                            return;
+                        }
+                    }
+
+                    System.out.printf("Documento %s scaricato con successo.%n", doc);
+                } break;
+                case 203: {
+                    System.err.println("Impossibile visualizzare documento. Riprova.");
+                } break;
+                case 204: {
+                    System.err.printf("Non possiedi alcun documento chiamato %s.%n", doc);
+                } break;
+                case 206: {
+                    System.err.println("Numero di sezione errato.");
+                } break;
+            }
+        }
     }
 
     private static void opList(StatoClient statoClient) {
@@ -838,6 +918,7 @@ public class Client {
                 } break;
                 case 200: {
                     System.out.printf("Fine editing sezione %d del documento %s.%n", numSez, doc);
+                    statoClient.fineEditing(doc);
                     try {
                         statoClient.getMulticastSocket().leaveGroup(InetAddress.getByName(statoClient.getIpChat()));
                     } catch (IOException e) {
@@ -870,7 +951,6 @@ public class Client {
                 statoClient.getMulticastSocket().receive(pacchetto);
             }
             catch(IOException e) {
-                System.out.println("non ci son più messaggi da leggere");
                 break;
             }
             try {

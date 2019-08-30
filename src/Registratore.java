@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Registratore extends UnicastRemoteObject implements IRegistratore {
     private ConcurrentHashMap<String, Utente> utentiRegistrati;
 
-    public Registratore() throws RemoteException {
+    Registratore() throws RemoteException {
         utentiRegistrati = new ConcurrentHashMap<>();
     }
 
@@ -34,7 +34,7 @@ public class Registratore extends UnicastRemoteObject implements IRegistratore {
         return utentiRegistrati.containsKey(username);
     }
 
-    public Utente getUtente(String username) {
+    Utente getUtente(String username) {
         return utentiRegistrati.getOrDefault(username, null);
     }
 

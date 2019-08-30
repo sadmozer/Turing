@@ -23,7 +23,7 @@ public class IpConverter {
      *
      * @return The IP address as a number
      */
-    public static long ipToLong(String ipAddress) {
+    private static long ipToLong(String ipAddress) {
         long result = 0;
         String[] atoms = ipAddress.split("\\.");
 
@@ -34,7 +34,7 @@ public class IpConverter {
         return result & 0xFFFFFFFF;
     }
 
-    public static String longToIp(long ip) {
+    private static String longToIp(long ip) {
         StringBuilder sb = new StringBuilder(15);
 
         for (int i = 0; i < 4; i++) {
@@ -50,11 +50,7 @@ public class IpConverter {
         return sb.toString();
     }
 
-    public static long next(long ip) {
-        return ip + 1L;
-    }
-
-    public static String next(String ip) {
+    static String next(String ip) {
         return longToIp(ipToLong(ip)+1L);
     }
 }

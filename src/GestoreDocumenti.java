@@ -1,26 +1,23 @@
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-public class GestoreDocumenti {
+class GestoreDocumenti {
     private HashMap<Utente, HashMap<String, Documento>> documentiPerUtente = new HashMap<>();
     private HashMap<Documento, HashSet<String>> collaboratoriPerDocumento = new HashMap<>();
     private HashMap<Documento, Utente[]> attiviPerDocumento= new HashMap<>();
-    private String pathMainDirectory = "";
-    private String ipChatIniziale = "";
+    private String pathMainDirectory;
+    private String ipChatIniziale;
 
-    public GestoreDocumenti(String pathMainDirectory, String ipChatIniziale) {
+    GestoreDocumenti(String pathMainDirectory, String ipChatIniziale) {
         this.pathMainDirectory = pathMainDirectory;
         this.ipChatIniziale = ipChatIniziale;
     }
 
-    public boolean creaDirectoryDocumenti(Utente utente) {
+    boolean creaDirectoryDocumenti(Utente utente) {
         Path mainPath = Paths.get(pathMainDirectory);
         Path dirPath = Paths.get(pathMainDirectory + File.separator + utente.getUsername());
         try {
@@ -29,10 +26,13 @@ public class GestoreDocumenti {
                 System.out.println("Creata main directory.");
             }
 
-            if(!documentiPerUtente.containsKey(utente) && !Files.exists(dirPath)) {
+            if(!documentiPerUtente.containsKey(utente)) {
+                documentiPerUtente.put(utente, new HashMap<>());
+            }
+
+            if (!Files.exists(dirPath)) {
                 Files.createDirectory(dirPath);
                 System.out.printf("Creata directory documenti %s path %s.%n", utente.getUsername(), dirPath.toString());
-                documentiPerUtente.put(utente, new HashMap<>());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -41,7 +41,7 @@ public class GestoreDocumenti {
         return true;
     }
 
-    public boolean haDocumento(String nomeDoc, Utente utente) {
+    boolean haDocumento(String nomeDoc, Utente utente) {
         HashMap<String, Documento> hasmapDoc;
         if ((hasmapDoc = documentiPerUtente.get(utente)) == null) {
             return false;
@@ -49,7 +49,7 @@ public class GestoreDocumenti {
         return hasmapDoc.get(nomeDoc) != null;
     }
 
-    public int getNumSezioni(String nomeDoc, Utente utente) {
+    int getNumSezioni(String nomeDoc, Utente utente) {
         HashMap<String, Documento> mappaDocumenti;
         if ((mappaDocumenti = documentiPerUtente.get(utente)) == null) {
             return -1;
@@ -57,11 +57,11 @@ public class GestoreDocumenti {
         return mappaDocumenti.get(nomeDoc).getNumSezioni();
     }
 
-    public String getPathSezione(String nomeDoc, int numSezione, Utente utente) {
+    String getPathSezione(String nomeDoc, int numSezione, Utente utente) {
         return documentiPerUtente.get(utente).get(nomeDoc).getPathFile() + File.separator + nomeDoc + "_" + numSezione + ".txt";
     }
 
-    public boolean isCollaboratore(String usernameInvitato, String nomeDoc, Utente utenteCreatore) {
+    boolean isCollaboratore(String usernameInvitato, String nomeDoc, Utente utenteCreatore) {
         Documento doc;
         if((doc = documentiPerUtente.get(utenteCreatore).get(nomeDoc)) == null) {
             return false;
@@ -74,11 +74,11 @@ public class GestoreDocumenti {
         return listaCol.contains(usernameInvitato);
     }
 
-    public boolean isCreatore(String nomeDoc, Utente utente) {
+    boolean isCreatore(String nomeDoc, Utente utente) {
         return documentiPerUtente.get(utente).get(nomeDoc).getCreatore().getUsername().equals(utente.getUsername());
     }
 
-    public boolean creaDocumento(String nomeDoc, Utente utenteCreatore, int numSezioni) {
+    boolean creaDocumento(String nomeDoc, Utente utenteCreatore, int numSezioni) {
         // Creo nuovo documento
         Documento nuovoDocumento = new Documento(nomeDoc, utenteCreatore, numSezioni, ipChatIniziale);
 
@@ -122,7 +122,7 @@ public class GestoreDocumenti {
         return true;
     }
 
-    public boolean condividiDocumento(String nomeDoc, Utente utenteCreatore, Utente utenteInvitato) {
+    boolean condividiDocumento(String nomeDoc, Utente utenteCreatore, Utente utenteInvitato) {
         HashMap<String, Documento> listaDocsCreatore;
         HashMap<String, Documento> listaDocsInvitato = null;
         HashSet<String> listaCollaboratori;
@@ -144,14 +144,10 @@ public class GestoreDocumenti {
             listaCollaboratori = collaboratoriPerDocumento.get(listaDocsCreatore.get(nomeDoc));
         }
 
-        if (!listaCollaboratori.add(utenteInvitato.getUsername())) {
-            return false;
-        }
-
-        return true;
+        return listaCollaboratori.add(utenteInvitato.getUsername());
     }
 
-    public String getListaDocumenti(Utente utente) {
+    String getListaDocumenti(Utente utente) {
         String ret = "";
         HashMap<String, Documento> hashMap = documentiPerUtente.get(utente);
 
@@ -178,7 +174,7 @@ public class GestoreDocumenti {
         return ret;
     }
 
-    public Utente isEditing(String nomeDoc, int numSez, Utente utente) {
+    Utente isEditing(String nomeDoc, int numSez, Utente utente) {
         HashMap<String, Documento> mappaDocumenti;
         if ((mappaDocumenti = documentiPerUtente.get(utente)) == null) {
             return null;
@@ -202,7 +198,7 @@ public class GestoreDocumenti {
         return attivo;
     }
 
-    public boolean inizioEditing(String nomeDoc, int numSez, Utente utente) {
+    boolean inizioEditing(String nomeDoc, int numSez, Utente utente) {
         Documento doc;
         if ((doc = documentiPerUtente.get(utente).get(nomeDoc)) == null) {
             return false;
@@ -217,7 +213,7 @@ public class GestoreDocumenti {
         return true;
     }
 
-    public boolean fineEditing(String nomeDoc, int numSez, Utente utente) {
+    boolean fineEditing(String nomeDoc, int numSez, Utente utente) {
         Documento doc;
         if ((doc = documentiPerUtente.get(utente).get(nomeDoc)) == null) {
             return false;
@@ -233,7 +229,7 @@ public class GestoreDocumenti {
         return true;
     }
 
-    public long getDimSezione(String nomeDoc, int numSez, Utente utente) {
+    long getDimSezione(String nomeDoc, int numSez, Utente utente) {
         String stringPathSezione = documentiPerUtente.get(utente).get(nomeDoc).getPathFile() + File.separator + nomeDoc + "_" + numSez + ".txt";
         Path pathFile = Paths.get(stringPathSezione);
         long dimSezione;
@@ -244,10 +240,9 @@ public class GestoreDocumenti {
             return -1;
         }
         return dimSezione;
-
     }
 
-    public String getChatIpDocumento(String nomeDoc, Utente utente) {
+    String getChatIpDocumento(String nomeDoc, Utente utente) {
         return documentiPerUtente.get(utente).get(nomeDoc).getIpChat();
     }
 }
