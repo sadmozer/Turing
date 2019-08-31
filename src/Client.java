@@ -4,9 +4,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.*;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnresolvedAddressException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -36,6 +35,33 @@ public class Client {
     private static int maxNumSezioni = 15;
 
     // Setup
+    private static void printClientUsage() {
+        System.out.println("USAGE:");
+        System.out.println("  java Client [registratore_port]");
+    }
+
+    private static void deleteRecDirectory(Path directory) {
+        try {
+            Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    System.out.printf("File %s eliminato.%n", file.toString());
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    System.out.printf("Cartella %s eliminata.%n", dir.toString());
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     private static IRegistratore setupRegistratore(int serverPort, String serverName) {
         IRegistratore registratoreRemoto = null;
@@ -43,7 +69,6 @@ public class Client {
             Registry reg = LocateRegistry.getRegistry(serverPort);
             registratoreRemoto = (IRegistratore) reg.lookup(serverName);
         } catch (RemoteException | NotBoundException e) {
-            e.printStackTrace();
             return null;
         }
         return registratoreRemoto;
@@ -443,6 +468,11 @@ public class Client {
             errore = true;
         }
 
+        if (username.equals(statoClient.getUtenteLoggato())) {
+            System.err.println("Non puoi autoinvitarti.");
+            errore = true;
+        }
+
         if (errore) {
             return;
         }
@@ -468,9 +498,6 @@ public class Client {
                 } break;
                 case 203: {
                     System.err.println("Impossibile condividere documento.");
-                } break;
-                case 206: {
-                    System.err.println("Non puoi autoinvitarti.");
                 } break;
                 case 205: {
                     System.err.println("L'utente invitato non risulta registrato.");
@@ -1116,20 +1143,6 @@ public class Client {
 
     public static void main (String[] args) {
 
-        int portaRegistratore;
-
-
-
-        System.out.println("[CLIENT]: Avvio..");
-
-        // Eseguo il setup del Servizio Registratore
-        IRegistratore registratoreRemoto = setupRegistratore(DEFAULT_REGISTRY_PORT, DEFAULT_REGISTRY_NAME);
-        if (registratoreRemoto == null) {
-            System.err.println("[CLIENT-ERROR]: Impossibile trovare Servizio Registratore. Esco..");
-            System.exit(1);
-        }
-        System.out.println("[CLIENT]: Servizio Registratore pronto.");
-
         // Cerco l'indirizzo dell'host locale
         String hostAddress = "";
         try {
@@ -1138,6 +1151,70 @@ public class Client {
             System.err.println("[CLIENT-ERROR]: HostAddress non trovato. Esco..");
             System.exit(1);
         }
+
+        int portaRegistratore = DEFAULT_REGISTRY_PORT;
+        String indirizzoServer = hostAddress;
+        int portaServer = DEFAULT_SERVER_PORT;
+
+        if (args.length != 0) {
+            String argomenti = String.join(" ", args);
+            System.out.println(argomenti);
+            String reg = "";
+            reg += "(-s\\s([0-9.]+)\\s-i\\s([0-9]+))|";
+            reg += "(-i\\s([0-9.]+)\\s-s\\s([0-9]+))|";
+            reg += "(-i\\s([0-9.]+)\\s-s\\s([0-9]+)\\s-r\\s([0-9]+))|";
+            reg += "(-i\\s([0-9.]+)\\s-r\\s([0-9]+)\\s-s\\s([0-9]+))|";
+            reg += "(-r\\s([0-9.]+)\\s-s\\s([0-9]+)\\s-i\\s([0-9]+))|";
+            reg += "(-r\\s([0-9.]+)\\s-i\\s([0-9]+)\\s-s\\s([0-9]+))|";
+            reg += "(-s\\s([0-9.]+)\\s-r\\s([0-9]+)\\s-i\\s([0-9]+))|";
+            reg += "(-s\\s([0-9.]+)\\s-i\\s([0-9]+)\\s-r\\s([0-9]+))|";
+            reg += "(-r\\s([0-9]+))";
+
+            if (argomenti.matches(reg)){
+                System.out.println(args.length);
+                for (int i = 0; i < args.length; i+=2) {
+                    switch (args[i]) {
+                        case "-i": {
+                            System.out.printf("Indirizzo server: %s%n", args[i+1]);
+                            indirizzoServer = args[i+1];
+                        } break;
+                        case "-s": {
+                            System.out.printf("Porta server: %s%n", args[i+1]);
+                            portaServer = Integer.parseInt(args[i+1]);
+                        } break;
+                        case "-r": {
+                            System.out.printf("Porta registratore: %s%n", args[i+1]);
+                            portaRegistratore = Integer.parseInt(args[i+1]);
+                        } break;
+                        default: {
+                            System.out.println("Errore argomenti.");
+                            printClientUsage();
+                            System.exit(1);
+                        }
+                    }
+                }
+            }
+            else {
+                System.out.println("Errore argomenti.");
+                printClientUsage();
+                System.exit(1);
+            }
+        }
+
+        System.out.printf("Porta Server: %d%n", portaServer);
+        System.out.printf("Porta Registratore: %d%n", portaRegistratore);
+        System.out.printf("Indirizzo server: %s%n", indirizzoServer);
+
+        System.out.println("[CLIENT]: Avvio..");
+        // Eseguo il setup del Servizio Registratore
+        IRegistratore registratoreRemoto = setupRegistratore(portaRegistratore, DEFAULT_REGISTRY_NAME);
+        if (registratoreRemoto == null) {
+            System.err.println("[CLIENT-ERROR]: Impossibile trovare Servizio Registratore. Esco..");
+            System.exit(1);
+        }
+        System.out.println("[CLIENT]: Servizio Registratore pronto.");
+
+
 
         // Configuro il socket
         SocketChannel socket = setupClientSocket();
@@ -1148,21 +1225,23 @@ public class Client {
         System.out.println("[CLIENT]: Client Socket configurato.");
 
         // Tento di connettermi al server
-        InetSocketAddress serverAddress = new InetSocketAddress(hostAddress, DEFAULT_SERVER_PORT);
+        InetSocketAddress serverAddress = new InetSocketAddress(indirizzoServer, portaServer);
         while (!tryConnect(socket, serverAddress)) {
             System.err.println("[CLIENT]: Impossibile connettersi. Riprovo..");
         }
 
         // Creo cartella dei documenti
+        Path pathMain = Paths.get(DEFAULT_DOCS_DIRECTORY);
         try {
-            if (Files.notExists(Paths.get(DEFAULT_DOCS_DIRECTORY))) {
-                Files.createDirectory(Paths.get(DEFAULT_DOCS_DIRECTORY));
+            if (Files.exists(pathMain) && Files.isDirectory(pathMain)) {
+                deleteRecDirectory(pathMain);
             }
+            Files.createDirectory(pathMain);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        System.out.printf("[CLIENT]: Connesso a %s sulla porta %d%n", hostAddress, DEFAULT_SERVER_PORT);
+        System.out.printf("[CLIENT]: Connesso a %s sulla porta %d%n", serverAddress.toString(), portaServer);
         System.out.println("[CLIENT]: Benvenuto su Turing CLI! Per vedere i comandi disponibili usa: turing --help");
 
         // Rimango in ascolto dei comandi utente in input

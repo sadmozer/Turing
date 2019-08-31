@@ -3,7 +3,8 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -25,6 +26,29 @@ public class Server {
     private static final long SELECTOR_TIMEOUT = 3000L;
     private static String DEFAULT_DOCS_DIRECTORY = System.getProperty("user.dir") + File.separator + "data_server";
 
+    private static void deleteRecDirectory(Path directory) {
+        try {
+            Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    System.out.printf("[SERVER]: File %s eliminato.%n", file.toString());
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    System.out.printf("[SERVER]: Cartella %s eliminata.%n", dir.toString());
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private static Registratore setupRegistratore(int registryPort, String registryName) {
         Registratore registratore = null;
         try {
@@ -33,13 +57,16 @@ public class Server {
             Registry reg = LocateRegistry.getRegistry(registryPort);
             reg.rebind(registryName, registratore);
         } catch (RemoteException e) {
-            e.printStackTrace();
             return null;
         }
         return registratore;
     }
 
-    // Forse da spostare in altra classe
+    private static void printServerUsage() {
+        System.out.println("USAGE:");
+        System.out.println("  java Server [server_port] [registratore_port]");
+    }
+
     private static ServerSocketChannel setupServerSocket(int serverPort) {
         ServerSocketChannel serverSocketChannel = null;
         try {
@@ -78,25 +105,8 @@ public class Server {
     }
 
     public static void main(String[] args) {
-
-
-        int portaRegistratore;
-        int portaServer;
-
-        // Eseguo il setup del servizio Registratore
-        Registratore registratore = setupRegistratore(DEFAULT_REGISTRY_PORT, DEFAULT_REGISTRY_NAME);
-        if (registratore == null) {
-            System.err.println("[SERVER-ERROR]: Impossibile avviare servizio Registratore. Esco..");
-            System.exit(1);
-        }
-        System.out.println("[SERVER]: Servizio Registratore avviato.");
-
-        // Eseguo il setup del Server Socket
-        ServerSocketChannel serverSocketChannel = setupServerSocket(DEFAULT_SERVER_PORT);
-        if (serverSocketChannel == null) {
-            System.err.println("[SERVER-ERROR]: Errore configurazione Server Socket. Esco..");
-            System.exit(1);
-        }
+        int portaRegistratore = DEFAULT_REGISTRY_PORT;
+        int portaServer = DEFAULT_SERVER_PORT;
 
         String hostAddress = "";
         try {
@@ -105,7 +115,66 @@ public class Server {
             System.err.println("[SERVER-ERROR]: HostAddress non trovato. Esco..");
             System.exit(1);
         }
-        System.out.printf("[SERVER]: %s in ascolto sulla porta %d\n", hostAddress, DEFAULT_SERVER_PORT);
+
+        if (args.length != 0) {
+            String argomenti = String.join(" ", args);
+            String reg = "";
+            reg += "(-s\\s([0-9.]+)\\s-r\\s([0-9]+))|";
+            reg += "(-r\\s([0-9.]+)\\s-s\\s([0-9]+))|";
+            if (argomenti.matches(reg)) {
+                for (int i = 0; i < args.length; i+=2) {
+                    switch (args[i]) {
+                        case "-s": {
+                            portaServer = Integer.parseInt(args[i+1]);
+                        } break;
+                        case "-r": {
+                            portaRegistratore = Integer.parseInt(args[i+1]);
+                        } break;
+                        default: {
+                            System.out.println(args[i]);
+                            printServerUsage();
+                            System.exit(1);
+                        }
+                    }
+                }
+
+            } else {
+                System.out.println("Errore argomenti.");
+                printServerUsage();
+                System.exit(1);
+            }
+        }
+
+        System.out.printf("Indirizzo server: %s%n", hostAddress);
+        System.out.printf("Porta server: %s%n", portaServer);
+        System.out.printf("Porta registratore: %s%n", portaRegistratore);
+
+        // Eseguo il setup del servizio Registratore
+        Registratore registratore = setupRegistratore(portaRegistratore, DEFAULT_REGISTRY_NAME);
+        if (registratore == null) {
+            System.err.println("[SERVER-ERROR]: Impossibile avviare servizio Registratore. Esco..");
+            System.exit(1);
+        }
+        System.out.println("[SERVER]: Servizio Registratore avviato.");
+
+        // Eseguo il setup del Server Socket
+        ServerSocketChannel serverSocketChannel = setupServerSocket(portaServer);
+        if (serverSocketChannel == null) {
+            System.err.println("[SERVER-ERROR]: Errore configurazione Server Socket. Esco..");
+            System.exit(1);
+        }
+
+        // Creo cartella dei documenti
+        Path pathMain = Paths.get(DEFAULT_DOCS_DIRECTORY);
+        try {
+            if (Files.exists(pathMain) && Files.isDirectory(pathMain)) {
+                deleteRecDirectory(pathMain);
+            }
+            Files.createDirectory(pathMain);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
 
         // Eseguo il setup del Server Selector
         Selector serverSelector = setupServerSelector(serverSocketChannel);
@@ -157,6 +226,7 @@ public class Server {
                     System.out.printf("[SERVER]: Connesso con il client %s\n", clientAddress);
                 }
                 else if (key.isValid() && key.isReadable()) {
+                    // Evento in lettura
                     SocketChannel client = (SocketChannel) key.channel();
                     Messaggio msgRicevuto = new Messaggio();
                     Messaggio msgRisposta = new Messaggio();
@@ -166,6 +236,7 @@ public class Server {
                     }
 
                     if (allegato.getPathFileDaRicevere() != null) {
+                        // Ho un file da ricevere
                         if (!Connessione.riceviFile(client, allegato.getDimFileDaRicevere(), allegato.getPathFileDaRicevere())) {
                             System.err.println("[SERVER-ERROR]: Errore riceviFile.");
                             msgRisposta.setBuffer(203);
@@ -178,9 +249,19 @@ public class Server {
                     }
                     else if((Connessione.riceviDati(client, msgRicevuto)) == -1) {
                         System.err.println("[SERVER-ERROR]: Errore riceviDati. Chiudo la connessione.");
+
+                        // Eseguo il logout in caso di errore
+                        if (allegato.getUtente() != null) {
+                            Utente utente = allegato.getUtente();
+                            String username = utente.getUsername();
+                            System.out.printf("[SERVER]: Logout %s.%n", username);
+                            gestoreSessioni.logout(utente);
+                        }
+
                         key.cancel();
                     }
                     else {
+                        // Ho ricevuto un messaggio
                         System.out.printf("[SERVER]: Messaggio ricevuto: %s\n", msgRicevuto.toString());
                         String[] comandi = msgRicevuto.toString().split(" ");
                         String operazione = comandi[0];
@@ -193,36 +274,45 @@ public class Server {
                                 allegato.setMessaggio(msgRisposta);
 
                                 if ((utente = registratore.getUtente(username)) == null) {
+                                    // Utente non registrato
                                     msgRisposta.setBuffer(201);
                                     System.err.println("[SERVER-ERROR]: Utente non registrato.");
                                 }
-                                else if (!registratore.getUtente(username).getPassword().equals(password)){
+                                else if (!utente.getPassword().equals(password)) {
+                                    // Password errata
                                     msgRisposta.setBuffer(202);
                                     System.err.println("[SERVER-ERROR]: Password errata.");
                                 }
-                                else if (gestoreSessioni.isLoggato(username)) {
+                                else if (gestoreSessioni.isLoggato(utente)) {
+                                    // Utente gia' loggato
                                     msgRisposta.setBuffer(203);
                                     allegato.setUtente(utente);
-                                    System.err.printf("[SERVER-ERROR]: Utente %s gia' loggato.%n", utente.getUsername());
+                                    System.err.printf("[SERVER-ERROR]: Utente %s gia' loggato.%n", username);
                                 }
-                                else if (!gestoreSessioni.login(username, registratore.getUtente(username))){
+                                else if (!gestoreSessioni.login(utente)) {
+                                    // Errore inaspettato
                                     msgRisposta.setBuffer(199);
-                                    System.err.printf("[SERVER-ERROR]: Errore login %s%n.", utente.getUsername());
+                                    System.err.printf("[SERVER-ERROR]: Errore login %s%n.", username);
                                 }
                                 else {
+                                    // Login effettuato
+                                    msgRisposta.setBuffer(200);
+                                    System.out.printf("[SERVER]: Login %s effettuato.%n", utente.getUsername());
+
+                                    // Memorizzo l'allegato dell'utente, se non c'e' gia'
                                     if (!gestoreSessioni.addAllegato(allegato, utente)) {
                                         System.out.println("[SERVER]: Allegato gia' presente.");
                                     }
-                                    msgRisposta.setBuffer(200);
                                     allegato.setUtente(utente);
-                                    System.out.printf("[SERVER]: Login %s effettuato.%n", utente.getUsername());
                                 }
                             } break;
                             case "logout": {
                                 Utente utente = allegato.getUtente();
                                 String username = utente.getUsername();
+
                                 allegato.setMessaggio(msgRisposta);
-                                if (!gestoreSessioni.logout(username)){
+
+                                if (!gestoreSessioni.logout(utente)){
                                     System.err.printf("[SERVER-ERROR]: Errore logout %s.%n", username);
                                     msgRisposta.setBuffer(205);
                                 }
@@ -253,8 +343,6 @@ public class Server {
                                 else {
                                     System.out.printf("[SERVER]: Documento %s di %s creato.%n", nomeDoc, username);
                                     msgRisposta.setBuffer(200);
-
-
                                 }
                             } break;
                             case "list": {
@@ -283,11 +371,7 @@ public class Server {
                                 String usernameInvitato = comandi[2];
                                 allegato.setMessaggio(msgRisposta);
 
-                                if (username.equals(usernameInvitato)) {
-                                    System.err.println("[SERVER-ERROR]: Autoinvito.");
-                                    msgRisposta.setBuffer(206);
-                                }
-                                else if (!registratore.isRegistrato(usernameInvitato)) {
+                                if (!registratore.isRegistrato(usernameInvitato)) {
                                     System.err.printf("[SERVER-ERROR]: Errore utenteInvitato %s non registrato.%n", usernameInvitato);
                                     msgRisposta.setBuffer(205);
                                 }

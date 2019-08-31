@@ -1,44 +1,40 @@
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class GestoreSessioni {
+class GestoreSessioni {
     private static final HashMap<String, Utente> utentiLoggati = new HashMap<>();
     private static final HashMap<Utente, Allegato> allegatoPerUtente = new HashMap<>();
     private HashMap<Utente, ArrayList<Messaggio>> notifichePerUtente = new HashMap<>();
 
-    public GestoreSessioni() {
+    GestoreSessioni() {
     }
 
-    public boolean isLoggato(String username) {
-        return utentiLoggati.containsKey(username);
+    boolean isLoggato(Utente utente) {
+        return utentiLoggati.containsValue(utente);
     }
 
-    public boolean login(String username, Utente utente) {
-         return (utentiLoggati.putIfAbsent(username, utente) == null);
+    boolean login(Utente utente) {
+         return (utentiLoggati.putIfAbsent(utente.getUsername(), utente) == null);
     }
-    public boolean logout(String username) {
-        return (utentiLoggati.remove(username) != null);
+    boolean logout(Utente utente) {
+        return (utentiLoggati.remove(utente.getUsername()) != null);
     }
 
-    public boolean addAllegato(Allegato allegato, Utente utente) {
+    boolean addAllegato(Allegato allegato, Utente utente) {
         return allegatoPerUtente.putIfAbsent(utente, allegato) == null;
     }
 
-    public Allegato getAllegato(String username) {
-        return allegatoPerUtente.getOrDefault(username, null);
-    }
-
-    public boolean haNotifiche(Utente utente) {
+    boolean haNotifiche(Utente utente) {
         if (notifichePerUtente.get(utente) == null) {
             return false;
         }
         return !notifichePerUtente.get(utente).isEmpty();
     }
 
-    public Messaggio popNotifica(Utente utente) {
+    Messaggio popNotifica(Utente utente) {
         return notifichePerUtente.get(utente).remove(0);
     }
-    public void addNotifica(Messaggio notificaDaAggiungere, Utente utente) {
+    void addNotifica(Messaggio notificaDaAggiungere, Utente utente) {
         if (notifichePerUtente.get(utente) == null) {
             notifichePerUtente.put(utente, new ArrayList<>());
         }

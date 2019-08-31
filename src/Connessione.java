@@ -6,7 +6,6 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
 
-
 /**
  *
  * Contiene i metodi utilizzati, sia dal server che dai client, per
