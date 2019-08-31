@@ -13,10 +13,19 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Scanner;
 
+/**
+ *
+ * Rappresenta il client dell'applicazione.
+ * Riceve istruzioni benformate dall'utente via CLI e le invia al server via socket TCP.
+ *
+ * @author Niccolo' Cardelli 534015
+ */
 public class Client {
     private static int DEFAULT_REGISTRY_PORT = 6000;
     private static String DEFAULT_REGISTRY_NAME = "Registratore";
-    private static int DEFAULT_CLIENT_PORT = 9999;
+    private static int DEFAULT_SERVER_PORT = 9999;
+    private static String DEFAULT_DOCS_DIRECTORY = System.getProperty("user.dir") + File.separator + "data_client";
+    private static int DEFAULT_PACKET_SIZE = 1024;
     private static int minLungUsername = 3;
     private static int maxLungUsername = 20;
     private static int minLungPassword = 6;
@@ -25,10 +34,9 @@ public class Client {
     private static int maxLungDocumento = 20;
     private static int minNumSezioni = 1;
     private static int maxNumSezioni = 15;
-    private static String DEFAULT_DOCS_DIRECTORY = System.getProperty("user.dir") + File.separator + "data_client";
-    private static int DEFAULT_PACKET_SIZE = 1024;
 
     // Setup
+
     private static IRegistratore setupRegistratore(int serverPort, String serverName) {
         IRegistratore registratoreRemoto = null;
         try {
@@ -943,16 +951,18 @@ public class Client {
     }
 
     private static void opReceive(StatoClient statoClient) {
+        MulticastSocket multicastSocket = statoClient.getMulticastSocket();
         DatagramPacket pacchetto;
         while(true) {
             try {
                 byte[] buf = new byte[DEFAULT_PACKET_SIZE];
                 pacchetto = new DatagramPacket(buf, buf.length);
-                statoClient.getMulticastSocket().receive(pacchetto);
+                multicastSocket.receive(pacchetto);
             }
             catch(IOException e) {
                 break;
             }
+
             try {
                 System.out.println(new String(pacchetto.getData(), pacchetto.getOffset(), pacchetto.getLength(), "UTF-8"));
             } catch (UnsupportedEncodingException e) {
@@ -1105,6 +1115,11 @@ public class Client {
     }
 
     public static void main (String[] args) {
+
+        int portaRegistratore;
+
+
+
         System.out.println("[CLIENT]: Avvio..");
 
         // Eseguo il setup del Servizio Registratore
@@ -1120,7 +1135,6 @@ public class Client {
         try {
             hostAddress = InetAddress.getLocalHost().getHostAddress();
         } catch (UnknownHostException e) {
-            e.printStackTrace();
             System.err.println("[CLIENT-ERROR]: HostAddress non trovato. Esco..");
             System.exit(1);
         }
@@ -1134,7 +1148,7 @@ public class Client {
         System.out.println("[CLIENT]: Client Socket configurato.");
 
         // Tento di connettermi al server
-        InetSocketAddress serverAddress = new InetSocketAddress(hostAddress, DEFAULT_CLIENT_PORT);
+        InetSocketAddress serverAddress = new InetSocketAddress(hostAddress, DEFAULT_SERVER_PORT);
         while (!tryConnect(socket, serverAddress)) {
             System.err.println("[CLIENT]: Impossibile connettersi. Riprovo..");
         }
@@ -1148,7 +1162,7 @@ public class Client {
             e.printStackTrace();
         }
 
-        System.out.printf("[CLIENT]: Connesso a %s sulla porta %d%n", hostAddress, DEFAULT_CLIENT_PORT);
+        System.out.printf("[CLIENT]: Connesso a %s sulla porta %d%n", hostAddress, DEFAULT_SERVER_PORT);
         System.out.println("[CLIENT]: Benvenuto su Turing CLI! Per vedere i comandi disponibili usa: turing --help");
 
         // Rimango in ascolto dei comandi utente in input

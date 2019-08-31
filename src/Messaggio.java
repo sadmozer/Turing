@@ -1,5 +1,8 @@
 import java.nio.ByteBuffer;
 
+/**
+ * @author Niccolo' Cardelli 534015
+ */
 public class Messaggio {
     private ByteBuffer buffer;
 

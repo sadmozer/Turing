@@ -5,6 +5,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+/**
+ * @author Niccolo' Cardelli 534015
+ */
 class GestoreDocumenti {
     private HashMap<Utente, HashMap<String, Documento>> documentiPerUtente = new HashMap<>();
     private HashMap<Documento, HashSet<String>> collaboratoriPerDocumento = new HashMap<>();

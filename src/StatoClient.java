@@ -1,16 +1,23 @@
 import java.io.IOException;
 import java.net.MulticastSocket;
-import java.nio.channels.MulticastChannel;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 
+
+/**
+ *
+ * Rappresenta lo stato del client
+ *
+ * @author Niccolo' Cardelli 534015
+ */
 public class StatoClient {
     private IRegistratore registratore;
     private SocketChannel socket;
+    private MulticastSocket multicastSocket;
+
     private Stato stato;
     private String utenteLoggato;
     private String ipChat;
-    private MulticastSocket multicastSocket;
     private HashMap<String, Integer> sezioniPerDocumentoEditati;
 
     StatoClient(IRegistratore registratore, SocketChannel socket, Stato stato) {

@@ -1,7 +1,10 @@
 import java.nio.file.Path;
 import java.util.LinkedList;
 
-public class Allegato {
+/**
+ * @author Niccolo' Cardelli 534015
+ */
+class Allegato {
     private Messaggio messaggio = null;
     private Utente utente = null;
     private LinkedList<Path> fileDaInviare = null;

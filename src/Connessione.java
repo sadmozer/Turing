@@ -6,6 +6,14 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
 
+
+/**
+ *
+ * Contiene i metodi utilizzati, sia dal server che dai client, per
+ * l'invio e la ricezione messaggi e files via TCP.
+ *
+ * @author Niccolo' Cardelli 534015
+ */
 class Connessione {
     static int inviaDati(SocketChannel socketChannel, Messaggio msg) {
         // Controllo argomenti

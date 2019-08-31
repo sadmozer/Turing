@@ -11,6 +11,13 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
 
+/**
+ *
+ * Rappresenta il server dell'applicazione.
+ * Riceve ed esegue operazioni comunicate da piu' client via TCP e UDP.
+ *
+ * @author Niccolo' Cardelli
+ */
 public class Server {
     private static final int DEFAULT_REGISTRY_PORT = 6000;
     private static final String DEFAULT_REGISTRY_NAME = "Registratore";
@@ -18,7 +25,6 @@ public class Server {
     private static final long SELECTOR_TIMEOUT = 3000L;
     private static String DEFAULT_DOCS_DIRECTORY = System.getProperty("user.dir") + File.separator + "data_server";
 
-    // Forse da spostare in Registratore
     private static Registratore setupRegistratore(int registryPort, String registryName) {
         Registratore registratore = null;
         try {
@@ -72,6 +78,11 @@ public class Server {
     }
 
     public static void main(String[] args) {
+
+
+        int portaRegistratore;
+        int portaServer;
+
         // Eseguo il setup del servizio Registratore
         Registratore registratore = setupRegistratore(DEFAULT_REGISTRY_PORT, DEFAULT_REGISTRY_NAME);
         if (registratore == null) {
@@ -91,7 +102,6 @@ public class Server {
         try {
             hostAddress = InetAddress.getLocalHost().getHostAddress();
         } catch (UnknownHostException e) {
-            e.printStackTrace();
             System.err.println("[SERVER-ERROR]: HostAddress non trovato. Esco..");
             System.exit(1);
         }
@@ -118,7 +128,7 @@ public class Server {
             }
             else if (numCanaliPronti == 0){
                 // Nessun canale pronto
-                System.out.println("\r[SERVER]: (" + count + ") Nessun canale pronto..");
+                System.out.println("[SERVER]: (" + count + ") Nessun canale pronto..");
                 count++;
                 continue;
             }

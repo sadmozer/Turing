@@ -2,6 +2,12 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ *
+ *
+ *
+ * @author Niccolo' Cardelli 534015
+ */
 public class Registratore extends UnicastRemoteObject implements IRegistratore {
     private ConcurrentHashMap<String, Utente> utentiRegistrati;
 

@@ -1,5 +1,6 @@
-import java.util.concurrent.ConcurrentHashMap;
-
+/**
+ * @author Niccolo' Cardelli 534015
+ */
 public class Documento {
     private Utente creatore;
     private int numSezioni;
