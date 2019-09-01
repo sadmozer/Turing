@@ -14,15 +14,17 @@ public class StatoClient {
     private IRegistratore registratore;
     private SocketChannel socket;
     private MulticastSocket multicastSocket;
+    private String pathMainDirectory;
 
     private Stato stato;
     private String utenteLoggato;
     private String ipChat;
     private HashMap<String, Integer> sezioniPerDocumentoEditati;
 
-    StatoClient(IRegistratore registratore, SocketChannel socket, Stato stato) {
+    StatoClient(IRegistratore registratore, SocketChannel socket, String pathMainDirectory, Stato stato) {
         this.registratore = registratore;
         this.socket = socket;
+        this.pathMainDirectory = pathMainDirectory;
         this.stato = stato;
         this.utenteLoggato = "";
         this.sezioniPerDocumentoEditati = new HashMap<>();
@@ -97,5 +99,13 @@ public class StatoClient {
 
     public void setMulticastSocket(MulticastSocket multicastSocket) {
         this.multicastSocket = multicastSocket;
+    }
+
+    public String getPathMainDirectory() {
+        return pathMainDirectory;
+    }
+
+    public void setPathMainDirectory(String pathMainDirectory) {
+        this.pathMainDirectory = pathMainDirectory;
     }
 }

@@ -23,7 +23,6 @@ public class Client {
     private static int DEFAULT_REGISTRY_PORT = 6000;
     private static String DEFAULT_REGISTRY_NAME = "Registratore";
     private static int DEFAULT_SERVER_PORT = 9999;
-    private static String DEFAULT_DOCS_DIRECTORY = System.getProperty("user.dir") + File.separator + "data_client";
     private static int DEFAULT_PACKET_SIZE = 1024;
     private static int minLungUsername = 3;
     private static int maxLungUsername = 20;
@@ -145,7 +144,7 @@ public class Client {
         return input.matches(regex);
     }
 
-    private static void riceviNotifica(Messaggio msgRisposta, String utente) {
+    private static void riceviNotifica(Messaggio msgRisposta, String utente, String pathMainDirectory) {
         System.out.println("[NUOVA NOTIFICA!]");
         byte[] bytesMittente = new byte[msgRisposta.getBuffer().getInt()];
         msgRisposta.getBuffer().get(bytesMittente);
@@ -156,12 +155,12 @@ public class Client {
         int numSezioni = msgRisposta.getBuffer().getInt();
         System.out.printf("  %s ti ha invitato a collaborare al documento %s composto da %d sezioni.%n  Ora puoi accedere e modificare il documento.%n", mittente, nomeDoc, numSezioni);
 
-        String pathDocumento = DEFAULT_DOCS_DIRECTORY + File.separator + utente + File.separator + nomeDoc;
+        String pathDocumento = pathMainDirectory + File.separator + utente + File.separator + nomeDoc;
 
         try {
             if (Files.notExists(Paths.get(pathDocumento))) {
                 Files.createDirectory(Paths.get(pathDocumento));
-                System.out.printf("Creata directory %s.%n", pathDocumento);
+                System.out.printf("Creata directory %s%n", pathDocumento);
             }
             for (int i = 1; i <= numSezioni; i++) {
                 if (Files.notExists(Paths.get( pathDocumento + File.separator + nomeDoc + "_" + i + ".txt"))) {
@@ -227,7 +226,7 @@ public class Client {
         }
 
         // Provo a registrare l'utente
-        Path pathDatiUtente = Paths.get(DEFAULT_DOCS_DIRECTORY + File.separator + username);
+        Path pathDatiUtente = Paths.get(statoClient.getPathMainDirectory() + File.separator + username);
         try {
             if(!registratore.registra(username, password)) {
                 System.err.println("Registrazione fallita. Riprova.");
@@ -235,7 +234,7 @@ public class Client {
             else {
                 if (Files.notExists(pathDatiUtente)) {
                     Files.createDirectory(pathDatiUtente);
-                    System.out.printf("Creata directory %s.%n", pathDatiUtente.toString());
+                    System.out.printf("Creata directory %s%n", pathDatiUtente.toString());
                 }
                 System.out.println("Registrazione eseguita con successo.");
             }
@@ -295,7 +294,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    riceviNotifica(msgRisposta, username);
+                    riceviNotifica(msgRisposta, username, statoClient.getPathMainDirectory());
                 }
                 break;
                 case 200: {
@@ -385,15 +384,15 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato(), statoClient.getPathMainDirectory());
                 } break;
                 case 200: {
-                    String pathDocumento = DEFAULT_DOCS_DIRECTORY + File.separator + username + File.separator + doc;
+                    String pathDocumento = statoClient.getPathMainDirectory() + File.separator + username + File.separator + doc;
 
                     try {
                         if (Files.notExists(Paths.get(pathDocumento))) {
                             Files.createDirectory(Paths.get(pathDocumento));
-                            System.out.printf("Creata directory %s.%n", pathDocumento);
+                            System.out.printf("Creata directory %s%n", pathDocumento);
                         }
                         for (int i = 1; i <= numSez; i++) {
                             if (Files.notExists(Paths.get( pathDocumento + File.separator + doc + "_" + i + ".txt"))) {
@@ -423,7 +422,7 @@ public class Client {
         }
 
         // Creo la directory contentente le sezioni del documento
-        Path dirPath = Paths.get(DEFAULT_DOCS_DIRECTORY + File.separator + username + File.separator + doc);
+        Path dirPath = Paths.get(statoClient.getPathMainDirectory() + File.separator + username + File.separator + doc);
         try {
             if(!Files.exists(dirPath)) {
                 Files.createDirectory(dirPath);
@@ -494,7 +493,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato(), statoClient.getPathMainDirectory());
                 } break;
                 case 203: {
                     System.err.println("Impossibile condividere documento.");
@@ -560,7 +559,7 @@ public class Client {
             return;
         }
 
-        Path pathFile = Paths.get(DEFAULT_DOCS_DIRECTORY + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
+        Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
         try {
             if (!Files.exists(pathFile)) {
                 Files.createFile(pathFile);
@@ -586,7 +585,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato(), statoClient.getPathMainDirectory());
                 } break;
                 case 200: {
                     byte[] bytesMittente = new byte[msgRisposta.getBuffer().getInt()];
@@ -664,7 +663,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato(), statoClient.getPathMainDirectory());
                 } break;
                 case 200: {
                     int numUtentiAttivi = msgRisposta.getBuffer().getInt();
@@ -680,7 +679,7 @@ public class Client {
                     int numSezioni = msgRisposta.getBuffer().getInt();
                     System.out.printf("Numero di sezioni da scaricare: %d.%n", numSezioni);
                     for (int i = 1; i <= numSezioni; i++) {
-                        Path pathFile = Paths.get(DEFAULT_DOCS_DIRECTORY + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator + doc + "_" + i + ".txt");
+                        Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator + doc + "_" + i + ".txt");
                         try {
                             if (!Files.exists(pathFile)) {
                                 Files.createFile(pathFile);
@@ -730,7 +729,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato(), statoClient.getPathMainDirectory());
                 } break;
                 case 203:
                 case 204:
@@ -807,10 +806,10 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato(), statoClient.getPathMainDirectory());
                 } break;
                 case 200: {
-                    Path pathFile = Paths.get(DEFAULT_DOCS_DIRECTORY + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
+                    Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
                     try {
                         if (!Files.exists(pathFile)) {
                             Files.createFile(pathFile);
@@ -910,7 +909,7 @@ public class Client {
             return;
         }
 
-        String strPathFile = DEFAULT_DOCS_DIRECTORY + File.separator + username + File.separator + doc + File.separator + doc + "_" + numSezione + ".txt";
+        String strPathFile = statoClient.getPathMainDirectory() + File.separator + username + File.separator + doc + File.separator + doc + "_" + numSezione + ".txt";
         Path pathFile = Paths.get(strPathFile);
         System.out.printf("Verra' inviato il file %s.%n", strPathFile);
 
@@ -944,7 +943,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato(), statoClient.getPathMainDirectory());
                 } break;
                 case 203:
                 case 204:
@@ -1018,7 +1017,7 @@ public class Client {
         while (msgRisposta.getBuffer().hasRemaining()) {
             switch (msgRisposta.getBuffer().getInt()) {
                 case 100: {
-                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato());
+                    riceviNotifica(msgRisposta, statoClient.getUtenteLoggato(), statoClient.getPathMainDirectory());
                 } break;
                 case 203:
                 case 204:
@@ -1214,8 +1213,6 @@ public class Client {
         }
         System.out.println("[CLIENT]: Servizio Registratore pronto.");
 
-
-
         // Configuro il socket
         SocketChannel socket = setupClientSocket();
         if (socket == null) {
@@ -1224,22 +1221,26 @@ public class Client {
         }
         System.out.println("[CLIENT]: Client Socket configurato.");
 
+        int i = 1;
+        String pathMainDirectory = System.getProperty("user.dir") + File.separator + "data_client_";
+        // Creo cartella dei documenti
+        try {
+            while (Files.exists(Paths.get(pathMainDirectory + i)) && Files.isDirectory(Paths.get(pathMainDirectory + i))) {
+                i++;
+            }
+            Files.createDirectory(Paths.get(pathMainDirectory + i));
+            System.out.printf("Creata directory %s%n", pathMainDirectory + i);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        pathMainDirectory += i;
+
         // Tento di connettermi al server
         InetSocketAddress serverAddress = new InetSocketAddress(indirizzoServer, portaServer);
         while (!tryConnect(socket, serverAddress)) {
             System.err.println("[CLIENT]: Impossibile connettersi. Riprovo..");
         }
 
-        // Creo cartella dei documenti
-        Path pathMain = Paths.get(DEFAULT_DOCS_DIRECTORY);
-        try {
-            if (Files.exists(pathMain) && Files.isDirectory(pathMain)) {
-                deleteRecDirectory(pathMain);
-            }
-            Files.createDirectory(pathMain);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
         System.out.printf("[CLIENT]: Connesso a %s sulla porta %d%n", serverAddress.toString(), portaServer);
         System.out.println("[CLIENT]: Benvenuto su Turing CLI! Per vedere i comandi disponibili usa: turing --help");
@@ -1249,7 +1250,8 @@ public class Client {
         String regex = costruisciRegex();
         String[] comandi = null;
         String currInput = "";
-        StatoClient statoClient = new StatoClient(registratoreRemoto, socket, Stato.STARTED);
+
+        StatoClient statoClient = new StatoClient(registratoreRemoto, socket, pathMainDirectory, Stato.STARTED);
 
         // Ciclo principale
         while (!(statoClient.getStato() == Stato.QUIT)) {
@@ -1284,6 +1286,10 @@ public class Client {
             socket.close();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+
+        if (Files.exists(Paths.get(pathMainDirectory)) && Files.isDirectory(Paths.get(pathMainDirectory))){
+            deleteRecDirectory(Paths.get(pathMainDirectory));
         }
     }
 }

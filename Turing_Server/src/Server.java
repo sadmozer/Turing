@@ -175,7 +175,6 @@ public class Server {
             e.printStackTrace();
         }
 
-
         // Eseguo il setup del Server Selector
         Selector serverSelector = setupServerSelector(serverSocketChannel);
         if (serverSelector == null) {
@@ -423,7 +422,7 @@ public class Server {
                                     System.err.println("[SERVER-ERROR]: Non ha documento.%n");
                                     msgRisposta.setBuffer(204);
                                 }
-                                else if (numSezione >= gestoreDocumenti.getNumSezioni(nomeDoc, utente)) {
+                                else if (numSezione > gestoreDocumenti.getNumSezioni(nomeDoc, utente)) {
                                     System.err.println("[SERVER-ERROR]: numSezione out of bound.%n");
                                     msgRisposta.setBuffer(206);
                                 }
@@ -536,7 +535,7 @@ public class Server {
                                     System.err.println("[SERVER-ERROR]: Non ha documento.%n");
                                     msgRisposta.setBuffer(204);
                                 }
-                                else if (numSezione >= gestoreDocumenti.getNumSezioni(nomeDoc, utente)) {
+                                else if (numSezione > gestoreDocumenti.getNumSezioni(nomeDoc, utente)) {
                                     System.err.println("[SERVER-ERROR]: numSezione out of bound.%n");
                                     msgRisposta.setBuffer(206);
                                 }
