@@ -415,7 +415,7 @@ public class Server {
                                 Utente utente = allegato.getUtente();
                                 Utente occupante;
                                 String nomeDoc = comandi[1];
-                                int numSezione = Integer.parseInt(comandi[2]);
+                                int numSezione = Integer.parseInt(comandi[2]) - 1;
                                 allegato.setMessaggio(msgRisposta);
 
                                 if (!gestoreDocumenti.haDocumento(nomeDoc, utente)) {
@@ -476,7 +476,7 @@ public class Server {
                                     LinkedList<Integer> sezEditata = new LinkedList<>();
                                     LinkedList<Integer> dimUtenti = new LinkedList<>();
                                     int dimTotale = 0;
-                                    for (int i = 0; i < numSezioni; i++) {
+                                    for (int i = 1; i <= numSezioni; i++) {
                                         if ((occupante = gestoreDocumenti.isEditing(nomeDoc, i, utente)) != null) {
                                             utentiAttivi.add(occupante.getUsername());
                                             dimUtenti.add(occupante.getUsername().length());
@@ -485,7 +485,7 @@ public class Server {
                                         }
                                     }
 
-                                    ByteBuffer buf = ByteBuffer.allocate((utentiAttivi.size() + 2) * Integer.BYTES + dimTotale);
+                                    ByteBuffer buf = ByteBuffer.allocate((utentiAttivi.size() + 3) * Integer.BYTES + dimTotale);
                                     Iterator<String> itUtenti = utentiAttivi.iterator();
                                     Iterator<Integer> itDim = dimUtenti.iterator();
                                     Iterator<Integer> itSez = sezEditata.iterator();
@@ -536,7 +536,7 @@ public class Server {
                                     msgRisposta.setBuffer(204);
                                 }
                                 else if (numSezione > gestoreDocumenti.getNumSezioni(nomeDoc, utente)) {
-                                    System.err.println("[SERVER-ERROR]: numSezione out of bound.%n");
+                                    System.err.printf("[SERVER-ERROR]: numSezione %d out of bound %d.%n", numSezione, gestoreDocumenti.getNumSezioni(nomeDoc, utente));
                                     msgRisposta.setBuffer(206);
                                 }
                                 else if ((occupante = gestoreDocumenti.isEditing(nomeDoc, numSezione, utente)) != null && !occupante.equals(utente)) {

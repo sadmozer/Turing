@@ -155,9 +155,15 @@ public class Client {
         int numSezioni = msgRisposta.getBuffer().getInt();
         System.out.printf("  %s ti ha invitato a collaborare al documento %s composto da %d sezioni.%n  Ora puoi accedere e modificare il documento.%n", mittente, nomeDoc, numSezioni);
 
+        String pathUtente = pathMainDirectory + File.separator + utente;
         String pathDocumento = pathMainDirectory + File.separator + utente + File.separator + nomeDoc;
 
         try {
+            if (Files.notExists(Paths.get(pathUtente))) {
+                Files.createDirectory(Paths.get(pathUtente));
+                System.out.printf("Creata directory %s%n", pathUtente);
+            }
+
             if (Files.notExists(Paths.get(pathDocumento))) {
                 Files.createDirectory(Paths.get(pathDocumento));
                 System.out.printf("Creata directory %s%n", pathDocumento);
@@ -559,15 +565,6 @@ public class Client {
             return;
         }
 
-        Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
-        try {
-            if (!Files.exists(pathFile)) {
-                Files.createFile(pathFile);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
         Messaggio msgInvio = new Messaggio();
         Messaggio msgRisposta = new Messaggio();
         msgInvio.setBuffer("show1 " + doc + " " + numSezione);
@@ -594,22 +591,41 @@ public class Client {
 
                     System.out.printf("L'utente %s sta editando la sezione.%n", mittente);
 
-                    long dimSezione = msgRisposta.getBuffer().getLong();
+                    Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
+                    try {
+                        if (!Files.exists(pathFile)) {
+                            Files.createFile(pathFile);
+                        }
 
-                    if (!Connessione.riceviFile(socket, dimSezione, pathFile)) {
-                        System.err.println("Errore riceviFile.");
-                        return;
+                        long dimSezione = msgRisposta.getBuffer().getLong();
+                        if (!Connessione.riceviFile(socket, dimSezione, pathFile)) {
+                            System.err.println("Errore riceviFile.");
+                            return;
+                        }
+                        System.out.printf("Sezione %d del documento %s scaricata con successo.%n", numSez, doc);
+
+                    } catch (IOException e) {
+                        System.out.println("Impossibile creare file.");
                     }
-                    System.out.printf("Sezione %d del documento %s scaricata con successo.%n", numSez, doc);
                 } break;
                 case 201: {
-                    long dimSezione = msgRisposta.getBuffer().getLong();
+                    Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
 
-                    if (!Connessione.riceviFile(socket, dimSezione, pathFile)) {
-                        System.err.println("Errore riceviFile.");
-                        return;
+                    try {
+                        if (!Files.exists(pathFile)) {
+                            Files.createFile(pathFile);
+                        }
+
+                        long dimSezione = msgRisposta.getBuffer().getLong();
+                        if (!Connessione.riceviFile(socket, dimSezione, pathFile)) {
+                            System.err.println("Errore riceviFile.");
+                            return;
+                        }
+                        System.out.printf("Sezione %d del documento %s scaricata con successo.%n", numSez, doc);
+                    } catch (IOException e) {
+                        System.out.println("Impossibile creare file.");
                     }
-                    System.out.printf("Sezione %d del documento %s scaricata con successo.%n", numSez, doc);
+
                 } break;
                 case 203: {
                     System.err.println("Impossibile visualizzare documento. Riprova.");
@@ -832,15 +848,9 @@ public class Client {
                         return;
                     }
                     System.out.printf("Inizio editing sezione %d del documento %s.%n", numSez, doc);
-                    statoClient.iniziaEditing(doc, numSez, 3000);
-                    try {
-                        statoClient.getMulticastSocket().joinGroup(InetAddress.getByName(statoClient.getIpChat()));
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        System.err.println("Errore join chat.");
-                        return;
+                    if(statoClient.iniziaEditing(doc, numSez, 3000)) {
+                        statoClient.setStato(Stato.EDIT);
                     }
-                    statoClient.setStato(Stato.EDIT);
                 } break;
                 case 203: {
                     System.err.println("Impossibile iniziare editing documento. Riprova.");
@@ -899,9 +909,8 @@ public class Client {
             errore = true;
         }
 
-        int numSezioneInEdit;
-        if ((numSezioneInEdit = statoClient.staEditando(doc)) != numSez) {
-            System.err.printf("Stai modificando la sezione %d del documento %s.%n", numSezioneInEdit, doc);
+        if (!statoClient.getDocEditato().equals(doc) || statoClient.getSezioneDocEditato() != numSez) {
+            System.err.printf("Stai modificando la sezione %d del documento %s.%n", statoClient.getSezioneDocEditato(), statoClient.getDocEditato());
             errore = true;
         }
 
@@ -952,7 +961,7 @@ public class Client {
                 } break;
                 case 200: {
                     System.out.printf("Fine editing sezione %d del documento %s.%n", numSez, doc);
-                    statoClient.fineEditing(doc);
+                    statoClient.fineEditing();
                     try {
                         statoClient.getMulticastSocket().leaveGroup(InetAddress.getByName(statoClient.getIpChat()));
                     } catch (IOException e) {

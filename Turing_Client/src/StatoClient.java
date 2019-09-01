@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
@@ -19,6 +20,8 @@ public class StatoClient {
     private Stato stato;
     private String utenteLoggato;
     private String ipChat;
+    private String docEditato;
+    private int sezioneDocEditato;
     private HashMap<String, Integer> sezioniPerDocumentoEditati;
 
     StatoClient(IRegistratore registratore, SocketChannel socket, String pathMainDirectory, Stato stato) {
@@ -63,26 +66,24 @@ public class StatoClient {
         this.utenteLoggato = utenteLoggato;
     }
 
-    int staEditando(String nomeDoc) {
-        if (!sezioniPerDocumentoEditati.containsKey(nomeDoc)) {
-            return -1;
-        }
-        return sezioniPerDocumentoEditati.get(nomeDoc);
-    }
-
     boolean iniziaEditing(String nomeDoc, int numSez, int portChat) {
         try {
             multicastSocket = new MulticastSocket(portChat);
             multicastSocket.setSoTimeout(500);
+            multicastSocket.joinGroup(InetAddress.getByName(ipChat));
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Errore join chat.");
+            return false;
         }
 
-        return sezioniPerDocumentoEditati.putIfAbsent(nomeDoc, numSez) == null;
+        docEditato = nomeDoc;
+        sezioneDocEditato = numSez;
+        return true;
     }
 
-    boolean fineEditing(String nomeDoc) {
-        return sezioniPerDocumentoEditati.remove(nomeDoc) != null;
+    void fineEditing() {
+        docEditato = "";
+        sezioneDocEditato = -1;
     }
 
     String getIpChat() {
@@ -107,5 +108,21 @@ public class StatoClient {
 
     public void setPathMainDirectory(String pathMainDirectory) {
         this.pathMainDirectory = pathMainDirectory;
+    }
+
+    public int getSezioneDocEditato() {
+        return sezioneDocEditato;
+    }
+
+    public void setSezioneDocEditato(int sezioneDocEditato) {
+        this.sezioneDocEditato = sezioneDocEditato;
+    }
+
+    public String getDocEditato() {
+        return docEditato;
+    }
+
+    public void setDocEditato(String docEditato) {
+        this.docEditato = docEditato;
     }
 }

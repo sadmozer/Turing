@@ -12,7 +12,7 @@ import java.util.HashSet;
 class GestoreDocumenti {
     private HashMap<Utente, HashMap<String, Documento>> documentiPerUtente = new HashMap<>();
     private HashMap<Documento, HashSet<String>> collaboratoriPerDocumento = new HashMap<>();
-    private HashMap<Documento, Utente[]> attiviPerDocumento= new HashMap<>();
+    private HashMap<Documento, HashMap<Integer, Utente>> attiviPerDocumento= new HashMap<>();
     private String pathMainDirectory;
     private String ipChatIniziale;
 
@@ -110,7 +110,11 @@ class GestoreDocumenti {
             }
 
             if (attiviPerDocumento.get(nuovoDocumento) == null) {
-                attiviPerDocumento.put(nuovoDocumento, new Utente[numSezioni]);
+                HashMap<Integer, Utente> utentiPerSezione = new HashMap<>();
+                for (int i = 1; i <= numSezioni; i++) {
+                    utentiPerSezione.put(i, null);
+                }
+                attiviPerDocumento.put(nuovoDocumento, utentiPerSezione);
             }
 
             Files.createDirectory(pathFile);
@@ -189,13 +193,13 @@ class GestoreDocumenti {
             return null;
         }
 
-        Utente[] utentiAttivi;
+        HashMap<Integer, Utente> utentiAttivi;
         if ((utentiAttivi = attiviPerDocumento.get(doc)) == null) {
             return null;
         }
 
         Utente attivo;
-        if ((attivo = utentiAttivi[numSez]) == null) {
+        if ((attivo = utentiAttivi.get(numSez)) == null) {
             return null;
         }
 
@@ -208,12 +212,7 @@ class GestoreDocumenti {
             return false;
         }
 
-        try {
-            attiviPerDocumento.get(doc)[numSez] = utente;
-        } catch (IndexOutOfBoundsException e) {
-            e.printStackTrace();
-            return false;
-        }
+        attiviPerDocumento.get(doc).put(numSez, utente);
         return true;
     }
 
@@ -223,12 +222,7 @@ class GestoreDocumenti {
             return false;
         }
 
-        try {
-            attiviPerDocumento.get(doc)[numSez] = null;
-        } catch (IndexOutOfBoundsException e) {
-            e.printStackTrace();
-            return false;
-        }
+        attiviPerDocumento.get(doc).put(numSez,  null);
 
         return true;
     }
