@@ -4,7 +4,6 @@ import java.util.HashSet;
 
 class GestoreSessioni {
     private static final HashSet<Utente> utentiLoggati = new HashSet<>();
-    private static final HashMap<Utente, Allegato> allegatoPerUtente = new HashMap<>();
     private HashMap<Utente, ArrayList<Messaggio>> notifichePerUtente = new HashMap<>();
 
     GestoreSessioni() {
@@ -19,10 +18,6 @@ class GestoreSessioni {
     }
     boolean logout(Utente utente) {
         return utentiLoggati.remove(utente);
-    }
-
-    boolean addAllegato(Allegato allegato, Utente utente) {
-        return allegatoPerUtente.putIfAbsent(utente, allegato) == null;
     }
 
     boolean haNotifiche(Utente utente) {

@@ -193,12 +193,8 @@ public class Client {
             errore = true;
         }
 
-        if (username.length() < minLungUsername) {
-            System.err.println("L'username deve contenere almeno " + minLungUsername + " caratteri.");
-            errore = true;
-        }
-        else if (username.length() > maxLungUsername) {
-            System.err.println("L'username deve contenere al massimo " + maxLungUsername + " caratteri.");
+        if (username.length() < minLungUsername || username.length() > maxLungUsername) {
+            System.err.println("L'username deve contenere tra i " + minLungUsername + " e i " + maxLungUsername + " caratteri.");
             errore = true;
         }
 
@@ -208,12 +204,8 @@ public class Client {
             errore = true;
         }
 
-        if (password.length() < minLungPassword) {
-            System.err.println("La password deve contenere almeno " + minLungPassword+ " caratteri.");
-            errore = true;
-        }
-        else if (password.length() > maxLungPassword) {
-            System.err.println("La password deve contenere al massimo " + maxLungPassword + " caratteri.");
+        if (password.length() < minLungPassword || password.length() > maxLungPassword) {
+            System.err.println("La password deve contenere tra i " + minLungPassword + " e i " + maxLungPassword + " caratteri.");
             errore = true;
         }
 
@@ -261,12 +253,8 @@ public class Client {
             System.err.println("L'username deve contenere solo caratteri alfanumerici.");
             return;
         }
-        else if (username.length() < minLungUsername) {
-            System.err.println("Username errato.");
-            return;
-        }
-        else if (username.length() > maxLungUsername) {
-            System.err.println("Username errato.");
+        else if (username.length() < minLungUsername || username.length() > maxLungUsername) {
+            System.err.println("L'username deve contenere tra i " + minLungUsername + " e i " + maxLungUsername + " caratteri.");
             return;
         }
 
@@ -275,12 +263,8 @@ public class Client {
             System.err.println("Password errata.");
             return;
         }
-        else if (password.length() < minLungPassword) {
-            System.err.println("Password errata.");
-            return;
-        }
-        else if (password.length() > maxLungPassword) {
-            System.err.println("Password errata.");
+        else if (password.length() < minLungPassword || password.length() > maxLungPassword) {
+            System.err.println("La password deve contenere tra i " + minLungPassword + " e i " + maxLungPassword + " caratteri.");
             return;
         }
 
@@ -1129,6 +1113,9 @@ public class Client {
             } break;
             case "receive": {
                 opReceive(statoClient);
+            } break;
+            case "--help": {
+                printUsage();
             } break;
             case "register":
             case "login":

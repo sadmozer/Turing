@@ -298,10 +298,10 @@ public class Server {
                                     msgRisposta.setBuffer(200);
                                     System.out.printf("[SERVER]: Login %s effettuato.%n", utente.getUsername());
 
-                                    // Memorizzo l'allegato dell'utente, se non c'e' gia'
-                                    if (!gestoreSessioni.addAllegato(allegato, utente)) {
-                                        System.out.println("[SERVER]: Allegato gia' presente.");
-                                    }
+//                                    // Memorizzo l'allegato dell'utente, se non c'e' gia'
+//                                    if (!gestoreSessioni.addAllegato(allegato, utente)) {
+//                                        System.out.println("[SERVER]: Allegato gia' presente.");
+//                                    }
                                     allegato.setUtente(utente);
                                 }
                             } break;

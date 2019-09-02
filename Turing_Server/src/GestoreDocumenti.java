@@ -12,13 +12,13 @@ import java.util.HashSet;
 class GestoreDocumenti {
     private HashMap<Utente, HashMap<String, Documento>> documentiPerUtente = new HashMap<>();
     private HashMap<Documento, HashSet<Utente>> collaboratoriPerDocumento = new HashMap<>();
-    private HashMap<Documento, HashMap<Integer, Utente>> attiviPerDocumento= new HashMap<>();
+    private HashMap<Documento, HashMap<Integer, Utente>> attiviPerDocumento = new HashMap<>();
     private String pathMainDirectory;
-    private String ipChatIniziale;
+    private String ipChatAttuale;
 
-    GestoreDocumenti(String pathMainDirectory, String ipChatIniziale) {
+    GestoreDocumenti(String pathMainDirectory, String ipChatAttuale) {
         this.pathMainDirectory = pathMainDirectory;
-        this.ipChatIniziale = ipChatIniziale;
+        this.ipChatAttuale = ipChatAttuale;
     }
 
     boolean creaDirectoryDocumenti(Utente utente) {
@@ -85,10 +85,10 @@ class GestoreDocumenti {
 
     boolean creaDocumento(String nomeDoc, Utente utenteCreatore, int numSezioni) {
         // Creo nuovo documento
-        Documento nuovoDocumento = new Documento(nomeDoc, utenteCreatore, numSezioni, ipChatIniziale);
+        Documento nuovoDocumento = new Documento(nomeDoc, utenteCreatore, numSezioni, ipChatAttuale);
 
         // Genero l'ip successivo
-        ipChatIniziale = IpConverter.next(ipChatIniziale);
+        ipChatAttuale = IpConverter.next(ipChatAttuale);
 
         // Prendo la hashmap dei documenti di utenteCreatore
         HashMap<String, Documento> mappaDocumenti;
