@@ -11,7 +11,7 @@ import java.util.HashSet;
  */
 class GestoreDocumenti {
     private HashMap<Utente, HashMap<String, Documento>> documentiPerUtente = new HashMap<>();
-    private HashMap<Documento, HashSet<String>> collaboratoriPerDocumento = new HashMap<>();
+    private HashMap<Documento, HashSet<Utente>> collaboratoriPerDocumento = new HashMap<>();
     private HashMap<Documento, HashMap<Integer, Utente>> attiviPerDocumento= new HashMap<>();
     private String pathMainDirectory;
     private String ipChatIniziale;
@@ -65,17 +65,18 @@ class GestoreDocumenti {
         return documentiPerUtente.get(utente).get(nomeDoc).getPathFile() + File.separator + nomeDoc + "_" + numSezione + ".txt";
     }
 
-    boolean isCollaboratore(String usernameInvitato, String nomeDoc, Utente utenteCreatore) {
+
+    boolean isCollaboratore(Utente utenteInvitato, String nomeDoc, Utente utenteCreatore) {
         Documento doc;
         if((doc = documentiPerUtente.get(utenteCreatore).get(nomeDoc)) == null) {
             return false;
         }
-        HashSet<String> listaCol;
+        HashSet<Utente> listaCol;
         if ((listaCol = collaboratoriPerDocumento.get(doc)) == null) {
             return false;
         }
 
-        return listaCol.contains(usernameInvitato);
+        return listaCol.contains(utenteInvitato);
     }
 
     boolean isCreatore(String nomeDoc, Utente utente) {
@@ -133,7 +134,6 @@ class GestoreDocumenti {
     boolean condividiDocumento(String nomeDoc, Utente utenteCreatore, Utente utenteInvitato) {
         HashMap<String, Documento> listaDocsCreatore;
         HashMap<String, Documento> listaDocsInvitato = null;
-        HashSet<String> listaCollaboratori;
         if ((listaDocsCreatore = documentiPerUtente.get(utenteCreatore)) == null) {
             return false;
         }
@@ -147,13 +147,15 @@ class GestoreDocumenti {
             return false;
         }
 
+        HashSet<Utente> listaCollaboratori;
         if ((listaCollaboratori = collaboratoriPerDocumento.get(listaDocsCreatore.get(nomeDoc))) == null) {
             collaboratoriPerDocumento.put(listaDocsCreatore.get(nomeDoc), new HashSet<>());
             listaCollaboratori = collaboratoriPerDocumento.get(listaDocsCreatore.get(nomeDoc));
         }
 
-        return listaCollaboratori.add(utenteInvitato.getUsername());
+        return listaCollaboratori.add(utenteInvitato);
     }
+
 
     String getListaDocumenti(Utente utente) {
         String ret = "";
@@ -166,11 +168,11 @@ class GestoreDocumenti {
         for (HashMap.Entry<String, Documento> doc: hashMap.entrySet()) {
             ret += doc.getKey() + ":%n";
             ret += "  Creatore: " + doc.getValue().getCreatore().getUsername() + "%n";
-            HashSet<String> listaCollab = collaboratoriPerDocumento.get(doc.getValue());
+            HashSet<Utente> listaCollab = collaboratoriPerDocumento.get(doc.getValue());
             if (listaCollab != null) {
                 ret += "  Collaboratori: ";
-                for (String col: listaCollab) {
-                    ret += col + ", ";
+                for (Utente col: listaCollab) {
+                    ret += col.getUsername() + ", ";
                 }
                 ret = ret.substring(0, ret.length() - 2) + "%n";
             }
@@ -181,6 +183,7 @@ class GestoreDocumenti {
         }
         return ret;
     }
+
 
     Utente isEditing(String nomeDoc, int numSez, Utente utente) {
         HashMap<String, Documento> mappaDocumenti;
@@ -216,15 +219,13 @@ class GestoreDocumenti {
         return true;
     }
 
-    boolean fineEditing(String nomeDoc, int numSez, Utente utente) {
+    void fineEditing(String nomeDoc, int numSez, Utente utente) {
         Documento doc;
         if ((doc = documentiPerUtente.get(utente).get(nomeDoc)) == null) {
-            return false;
+            return;
         }
 
         attiviPerDocumento.get(doc).put(numSez,  null);
-
-        return true;
     }
 
     long getDimSezione(String nomeDoc, int numSez, Utente utente) {

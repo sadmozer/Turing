@@ -23,7 +23,7 @@ public class Server {
     private static final int DEFAULT_REGISTRY_PORT = 6000;
     private static final String DEFAULT_REGISTRY_NAME = "Registratore";
     private static final int DEFAULT_SERVER_PORT = 9999;
-    private static final long SELECTOR_TIMEOUT = 3000L;
+    private static final long SELECTOR_TIMEOUT = 1000L;
     private static String DEFAULT_DOCS_DIRECTORY = System.getProperty("user.dir") + File.separator + "data_server";
 
     private static void deleteRecDirectory(Path directory) {
@@ -365,7 +365,6 @@ public class Server {
                             } break;
                             case "share": {
                                 Utente utente = allegato.getUtente();
-                                String username = utente.getUsername();
                                 String nomeDoc = comandi[1];
                                 String usernameInvitato = comandi[2];
                                 allegato.setMessaggio(msgRisposta);
@@ -386,7 +385,7 @@ public class Server {
                                     System.err.println("[SERVER-ERROR]: Documento con stesso nome.");
                                     msgRisposta.setBuffer(209);
                                 }
-                                else if (gestoreDocumenti.isCollaboratore(usernameInvitato, nomeDoc, utente)) {
+                                else if (gestoreDocumenti.isCollaboratore(registratore.getUtente(usernameInvitato), nomeDoc, utente)) {
                                     System.err.println("[SERVER-ERROR]: Utente gia' collaboratore.");
                                     msgRisposta.setBuffer(208);
                                 }

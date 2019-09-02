@@ -3,12 +3,12 @@ public class Utente {
     private String password;
 
 
-    public Utente(String username, String password) {
+    Utente(String username, String password) {
         this.username = username;
         this.password = password;
     }
 
-    public String getUsername() {
+    String getUsername() {
         return username;
     }
 
@@ -16,7 +16,7 @@ public class Utente {
         this.username = username;
     }
 
-    public String getPassword() {
+    String getPassword() {
         return password;
     }
 

@@ -4,6 +4,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.*;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnresolvedAddressException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.rmi.NotBoundException;
@@ -975,9 +976,10 @@ public class Client {
     }
 
     private static void opSend(StatoClient statoClient, String msg) {
-        byte[] byteMsg = msg.getBytes();
+        String strTot = statoClient.getUtenteLoggato() + ": " + msg;
+        byte[] byteMsg = strTot.getBytes();
         try {
-            DatagramPacket datagram = new DatagramPacket(byteMsg,byteMsg.length , InetAddress.getByName(statoClient.getIpChat()),3000);
+            DatagramPacket datagram = new DatagramPacket(byteMsg, byteMsg.length, InetAddress.getByName(statoClient.getIpChat()),3000);
             statoClient.getMulticastSocket().send(datagram);
         } catch (IOException e) {
             e.printStackTrace();
@@ -998,13 +1000,8 @@ public class Client {
                 break;
             }
 
-            try {
-                System.out.println(new String(pacchetto.getData(), pacchetto.getOffset(), pacchetto.getLength(), "UTF-8"));
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
+            System.out.println(new String(pacchetto.getData(), pacchetto.getOffset(), pacchetto.getLength(), StandardCharsets.UTF_8));
         }
-
     }
 
     private static void opLogout(StatoClient statoClient) {
@@ -1271,7 +1268,7 @@ public class Client {
                 System.out.printf("$ ");
             }
             currInput = inputUtente.nextLine();
-            comandi = currInput.split("\\s+");
+            comandi = currInput.split("\"?( |$)(?=(([^\"]*\"){2})*[^\"]*$)\"?");
             if(!sintassiInputCorretta(currInput, regex)) {
                 System.err.println("Comando errato.");
                 System.out.println("Per vedere i comandi disponibili usa: turing --help");

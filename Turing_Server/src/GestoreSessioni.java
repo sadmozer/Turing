@@ -1,8 +1,9 @@
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 class GestoreSessioni {
-    private static final HashMap<String, Utente> utentiLoggati = new HashMap<>();
+    private static final HashSet<Utente> utentiLoggati = new HashSet<>();
     private static final HashMap<Utente, Allegato> allegatoPerUtente = new HashMap<>();
     private HashMap<Utente, ArrayList<Messaggio>> notifichePerUtente = new HashMap<>();
 
@@ -10,14 +11,14 @@ class GestoreSessioni {
     }
 
     boolean isLoggato(Utente utente) {
-        return utentiLoggati.containsValue(utente);
+        return utentiLoggati.contains(utente);
     }
 
     boolean login(Utente utente) {
-         return (utentiLoggati.putIfAbsent(utente.getUsername(), utente) == null);
+         return utentiLoggati.add(utente);
     }
     boolean logout(Utente utente) {
-        return (utentiLoggati.remove(utente.getUsername()) != null);
+        return utentiLoggati.remove(utente);
     }
 
     boolean addAllegato(Allegato allegato, Utente utente) {
