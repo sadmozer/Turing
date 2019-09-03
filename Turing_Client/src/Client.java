@@ -330,12 +330,8 @@ public class Client {
             errore = true;
         }
 
-        if (doc.length() < minLungDocumento) {
-            System.err.printf("Il nome documento deve contenere almeno %d caratteri.%n", minLungDocumento);
-            errore = true;
-        }
-        else if(doc.length() > maxLungDocumento) {
-            System.err.printf("Il nome documento deve contenere al massimo %d caratteri.%n", maxLungDocumento);
+        if (doc.length() < minLungDocumento || doc.length() > maxLungDocumento) {
+            System.err.printf("Il nome documento deve contenere tra i %d e i %d caratteri.%n", minLungDocumento, maxLungDocumento);
             errore = true;
         }
 
@@ -574,7 +570,7 @@ public class Client {
                     msgRisposta.getBuffer().get(bytesMittente);
                     String mittente = new String(bytesMittente);
 
-                    System.out.printf("L'utente %s sta editando la sezione.%n", mittente);
+                    System.out.printf("L'utente %s sta editando questa sezione.%n", mittente);
 
                     Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
                     try {
@@ -942,7 +938,7 @@ public class Client {
                 case 203:
                 case 204:
                 case 205: {
-                    System.err.println("Impossibile effettuare logout. Riprova.");
+                    System.err.println("Impossibile effettuare fine editing. Riprova.");
                 } break;
                 case 200: {
                     System.out.printf("Fine editing sezione %d del documento %s.%n", numSez, doc);
@@ -966,9 +962,9 @@ public class Client {
             DatagramPacket datagram = new DatagramPacket(byteMsg, byteMsg.length, InetAddress.getByName(statoClient.getIpChat()),3000);
             statoClient.getMulticastSocket().send(datagram);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Errore invio messaggio sulla chat.");
         }
-
+        System.out.println("Messaggio inviato sulla chat.");
     }
 
     private static void opReceive(StatoClient statoClient) {
@@ -1087,7 +1083,8 @@ public class Client {
                 opLogout(statoClient);
             } break;
             case "register":
-            case "login": {
+            case "login":
+            case "quit": {
                 System.err.printf("Sei loggato come %s.%nDevi prima eseguire il logout.%n", statoClient.getUtenteLoggato());
             } break;
             case "end-edit":
@@ -1123,7 +1120,9 @@ public class Client {
             case "share":
             case "show":
             case "list":
-            case "edit": {
+            case "edit":
+            case "logout":
+            case "quit": {
                 System.err.printf("Non puoi eseguire il comando in modalità editing.%n");
             } break;
             default: {

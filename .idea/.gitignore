@@ -6,3 +6,4 @@
 /templates
 *.xml
 .attach_pid*
+*.iml

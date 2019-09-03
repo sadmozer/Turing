@@ -22,7 +22,6 @@ public class StatoClient {
     private String ipChat;
     private String docEditato;
     private int sezioneDocEditato;
-    private HashMap<String, Integer> sezioniPerDocumentoEditati;
 
     StatoClient(IRegistratore registratore, SocketChannel socket, String pathMainDirectory, Stato stato) {
         this.registratore = registratore;
@@ -30,7 +29,6 @@ public class StatoClient {
         this.pathMainDirectory = pathMainDirectory;
         this.stato = stato;
         this.utenteLoggato = "";
-        this.sezioniPerDocumentoEditati = new HashMap<>();
     }
 
     Stato getStato() {

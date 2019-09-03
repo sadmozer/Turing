@@ -414,7 +414,7 @@ public class Server {
                                 Utente utente = allegato.getUtente();
                                 Utente occupante;
                                 String nomeDoc = comandi[1];
-                                int numSezione = Integer.parseInt(comandi[2]) - 1;
+                                int numSezione = Integer.parseInt(comandi[2]);
                                 allegato.setMessaggio(msgRisposta);
 
                                 if (!gestoreDocumenti.haDocumento(nomeDoc, utente)) {
@@ -484,7 +484,8 @@ public class Server {
                                         }
                                     }
 
-                                    ByteBuffer buf = ByteBuffer.allocate((utentiAttivi.size() + 3) * Integer.BYTES + dimTotale);
+                                    System.out.printf("Utenti attivi %d.%n", utentiAttivi.size());
+                                    ByteBuffer buf = ByteBuffer.allocate((2*utentiAttivi.size() + 2) * Integer.BYTES + dimTotale);
                                     Iterator<String> itUtenti = utentiAttivi.iterator();
                                     Iterator<Integer> itDim = dimUtenti.iterator();
                                     Iterator<Integer> itSez = sezEditata.iterator();
