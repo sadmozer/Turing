@@ -14,9 +14,7 @@ import java.rmi.registry.Registry;
 import java.util.Scanner;
 
 /**
- *
  * Rappresenta il client dell'applicazione.
- * Riceve istruzioni benformate dall'utente via CLI e le invia al server via socket TCP.
  *
  * @author Niccolo' Cardelli 534015
  */
@@ -572,8 +570,16 @@ public class Client {
 
                     System.out.printf("L'utente %s sta editando questa sezione.%n", mittente);
 
+                    Path pathDir = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato());
+                    Path pathDoc = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc);
                     Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
                     try {
+                        if (!Files.exists(pathDir)) {
+                            Files.createDirectory(pathDir);
+                        }
+                        if (!Files.exists(pathDoc)) {
+                            Files.createDirectory(pathDoc);
+                        }
                         if (!Files.exists(pathFile)) {
                             Files.createFile(pathFile);
                         }
@@ -590,9 +596,16 @@ public class Client {
                     }
                 } break;
                 case 201: {
+                    Path pathDir = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato());
+                    Path pathDoc = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc);
                     Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
-
                     try {
+                        if (!Files.exists(pathDir)) {
+                            Files.createDirectory(pathDir);
+                        }
+                        if (!Files.exists(pathDoc)) {
+                            Files.createDirectory(pathDoc);
+                        }
                         if (!Files.exists(pathFile)) {
                             Files.createFile(pathFile);
                         }
@@ -675,6 +688,19 @@ public class Client {
 
                     int numSezioni = msgRisposta.getBuffer().getInt();
                     System.out.printf("Numero di sezioni da scaricare: %d.%n", numSezioni);
+                    Path pathDir = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato());
+                    Path pathDoc = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc);
+                    try {
+                        if (!Files.exists(pathDir)) {
+                            Files.createDirectory(pathDir);
+                        }
+                        if (!Files.exists(pathDoc)) {
+                            Files.createDirectory(pathDoc);
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
                     for (int i = 1; i <= numSezioni; i++) {
                         Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator + doc + "_" + i + ".txt");
                         try {
@@ -806,10 +832,23 @@ public class Client {
                     riceviNotifica(msgRisposta, statoClient.getUtenteLoggato(), statoClient.getPathMainDirectory());
                 } break;
                 case 200: {
-                    Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator +doc + "_" + numSezione + ".txt");
+                    Path pathDir = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato());
+                    Path pathDoc = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc);
+                    Path pathFile = Paths.get(statoClient.getPathMainDirectory() + File.separator + statoClient.getUtenteLoggato() + File.separator + doc + File.separator + doc + "_" + numSezione + ".txt");
                     try {
+                        if (!Files.exists(pathDir)) {
+                            Files.createDirectory(pathDir);
+                            System.out.printf("Creata directory %s%n", pathDir.toString());
+                        }
+
+                        if (!Files.exists(pathDoc)) {
+                            Files.createDirectory(pathDoc);
+                            System.out.printf("Creata directory %s%n", pathDoc.toString());
+                        }
+
                         if (!Files.exists(pathFile)) {
                             Files.createFile(pathFile);
+                            System.out.printf("Creato %s%n", pathFile.toString());
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -820,7 +859,7 @@ public class Client {
                     String ipChatDocumento = new String(bytes);
                     statoClient.setIpChat(ipChatDocumento);
 
-                    System.out.printf("Chat all'indirizzo: %s.%n", ipChatDocumento);
+//                    System.out.printf("Chat all'indirizzo: %s.%n", ipChatDocumento);
 
                     long dimSezione = msgRisposta.getBuffer().getLong();
 
@@ -828,6 +867,7 @@ public class Client {
                         System.err.println("Errore riceviFile.");
                         return;
                     }
+                    System.out.printf("Sezione %d del documento %s scaricata con successo.%n", numSez, doc);
                     System.out.printf("Inizio editing sezione %d del documento %s.%n", numSez, doc);
                     if(statoClient.iniziaEditing(doc, numSez, 3000)) {
                         statoClient.setStato(Stato.EDIT);
@@ -1273,6 +1313,8 @@ public class Client {
                 }
             }
         }
+
+        System.out.println("Chiudo il Client.");
         inputUtente.close();
         try {
             socket.close();

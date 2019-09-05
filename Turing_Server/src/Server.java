@@ -13,9 +13,7 @@ import java.util.LinkedList;
 import java.util.Set;
 
 /**
- *
  * Rappresenta il server dell'applicazione.
- * Riceve ed esegue operazioni comunicate da piu' client via TCP e UDP.
  *
  * @author Niccolo' Cardelli
  */
@@ -96,7 +94,7 @@ public class Server {
     private static int trySelect(Selector selector, long timeout) {
         int numPronti = 0;
         try {
-            numPronti = selector.select(timeout);
+            numPronti = selector.select();
         } catch (IOException e) {
             e.printStackTrace();
             return -1;

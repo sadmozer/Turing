@@ -1,4 +1,6 @@
 /**
+ * Rappresenta un documento
+ *
  * @author Niccolo' Cardelli 534015
  */
 public class Documento {

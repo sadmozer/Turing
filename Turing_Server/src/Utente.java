@@ -1,3 +1,9 @@
+/**
+ * Rappresenta un utente
+ *
+ * @author Niccolo' Cardelli 534015
+ */
+
 public class Utente {
     private String username;
     private String password;

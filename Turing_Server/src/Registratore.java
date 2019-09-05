@@ -3,8 +3,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- *
- *
+ * Si occupa della registrazione dei Client
  *
  * @author Niccolo' Cardelli 534015
  */

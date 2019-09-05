@@ -2,6 +2,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+/**
+ * Gestisce il login e le notifiche degli utenti
+ *
+ * @author Niccolo' Cardelli 534015
+ */
+
 class GestoreSessioni {
     private static final HashSet<Utente> utentiLoggati = new HashSet<>();
     private HashMap<Utente, ArrayList<Messaggio>> notifichePerUtente = new HashMap<>();

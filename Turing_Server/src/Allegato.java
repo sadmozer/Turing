@@ -2,6 +2,8 @@ import java.nio.file.Path;
 import java.util.LinkedList;
 
 /**
+ * Contiene le informazioni riguardanti una sessione di un utente
+ *
  * @author Niccolo' Cardelli 534015
  */
 class Allegato {

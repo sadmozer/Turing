@@ -6,7 +6,6 @@ import java.util.HashMap;
 
 
 /**
- *
  * Rappresenta lo stato del client
  *
  * @author Niccolo' Cardelli 534015

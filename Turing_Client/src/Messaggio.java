@@ -1,6 +1,8 @@
 import java.nio.ByteBuffer;
 
 /**
+ * Rappresenta un messaggio
+ *
  * @author Niccolo' Cardelli 534015
  */
 public class Messaggio {

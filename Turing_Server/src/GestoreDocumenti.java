@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 /**
+ * Gestisce i documenti e gli utenti collaboratori e attivi dei documenti
+ *
  * @author Niccolo' Cardelli 534015
  */
 class GestoreDocumenti {
