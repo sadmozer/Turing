@@ -1,9 +1,11 @@
 # Default ignored files
 /.idea
-/out
+/out/*
 /_linux
 /codestyles
 /templates
 *.xml
 .attach_pid*
 *.iml
+Turing_Client.iml
+Turing_Server.iml
